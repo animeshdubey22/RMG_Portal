@@ -1,0 +1,13 @@
+{
+  "name": "rmg-portal",
+  "version": "1.0.0",
+  "description": "Intelegencia Recruitment Management Portal",
+  "main": "app.js",
+  "scripts": {
+    "build": "echo 'No build required for static site'",
+    "vercel-build": "echo 'No build required for static site'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
