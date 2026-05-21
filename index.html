@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>intelegencia — Recruitment Management Portal</title>
+    <meta name="description" content="Internal recruitment management system for raising and tracking hiring requests across departments.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+</head>
+<body>
+
+    <!-- ========== PARTICLES BACKGROUND ========== -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- ========== GLOBAL NAV ========== -->
+    <nav class="global-nav" id="global-nav">
+        <div class="nav-inner">
+            <div class="nav-brand" onclick="navigate('home')">
+                <div class="brand-icon" style="margin-right: 6px;">
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none">
+                        <!-- Column 1 -->
+                        <rect x="0" y="4" width="2" height="8" rx="1" fill="#F37021"/>
+                        <rect x="0" y="14" width="2" height="10" rx="1" fill="#ED1924"/>
+                        <rect x="0" y="26" width="2" height="2" rx="1" fill="#9E1C1F"/>
+                        <!-- Column 2 -->
+                        <rect x="5" y="6" width="2" height="6" rx="1" fill="#F37021"/>
+                        <rect x="5" y="14" width="2" height="10" rx="1" fill="#ED1924"/>
+                        <rect x="5" y="26" width="2" height="2" rx="1" fill="#9E1C1F"/>
+                        <!-- Column 3 -->
+                        <rect x="10" y="2" width="2" height="10" rx="1" fill="#F37021"/>
+                        <rect x="10" y="14" width="2" height="10" rx="1" fill="#ED1924"/>
+                        <rect x="10" y="26" width="2" height="2" rx="1" fill="#9E1C1F"/>
+                        <!-- Column 4 -->
+                        <rect x="15" y="4" width="2" height="8" rx="1" fill="#F37021"/>
+                        <rect x="15" y="14" width="2" height="10" rx="1" fill="#ED1924"/>
+                        <rect x="15" y="26" width="2" height="2" rx="1" fill="#9E1C1F"/>
+                    </svg>
+                </div>
+                <span class="brand-text">intele<span class="brand-accent" style="color:var(--accent2);">gencia</span></span>
+            </div>
+            <div class="nav-links">
+                <button class="nav-link active" data-page="home" onclick="navigate('home')">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Home
+                </button>
+                <button class="nav-link" data-page="requester" onclick="navigate('requester')">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 4v16m-8-8h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    New Request
+                </button>
+                <button class="nav-link" data-page="hiring" onclick="navigate('hiring')">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Hiring Dashboard
+                </button>
+                <button class="nav-link" data-page="analytics" onclick="navigate('analytics')">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Analytics
+                </button>
+                <button class="nav-link" data-page="tracker" onclick="navigate('tracker')">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Track Ticket
+                </button>
+            </div>
+            <div class="nav-right">
+                <!-- User Profile Badge -->
+                <div class="nav-user-profile" id="nav-user-profile">
+                    <div class="user-avatar" id="user-avatar-initials">U</div>
+                    <div class="user-details">
+                        <span class="user-name" id="user-name-display">User</span>
+                        <span class="user-role" id="user-role-display">Role</span>
+                    </div>
+                </div>
+                
+                <button class="btn-export" onclick="exportToExcel()" title="Export all data to Excel">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Export
+                </button>
+                <button class="btn-export" id="btn-logout" onclick="logout()" title="Logout User Session" style="border-color:rgba(239,68,68,0.25);color:var(--red);">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Logout
+                </button>
+                <div class="nav-clock" id="nav-clock"></div>
+            </div>
+            <!-- Theme Toggle Button -->
+            <button class="btn-theme-toggle" id="btn-theme-toggle" onclick="toggleTheme()" title="Switch Theme" aria-label="Toggle Theme">
+                <svg class="theme-icon-sun" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="theme-icon-moon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ========== PAGE: HOME ========== -->
+    <main id="page-home" class="page active">
+        <section class="hero">
+            <div class="hero-content">
+                <div class="hero-badge">🚀 Recruitment Management System</div>
+                <h1 class="hero-title">
+                    Streamline Your<br>
+                    <span class="gradient-text">Hiring Workflow</span>
+                </h1>
+                <p class="hero-desc">From request to onboarding — manage every step of your recruitment process in one powerful portal. Raise requests, track progress, and export data seamlessly.</p>
+                <div class="hero-actions">
+                    <button class="btn-primary btn-lg" onclick="navigate('requester')">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 4v16m-8-8h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                        Raise New Request
+                    </button>
+                    <button class="btn-outline btn-lg" onclick="navigate('hiring')">
+                        Open Dashboard
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-card hero-card-1">
+                    <div class="hc-icon" style="background:linear-gradient(135deg,#6C63FF,#3B82F6)">📋</div>
+                    <div><div class="hc-label">Total Requests</div><div class="hc-value" id="hero-total">0</div></div>
+                </div>
+                <div class="hero-card hero-card-2">
+                    <div class="hc-icon" style="background:linear-gradient(135deg,#10B981,#059669)">✅</div>
+                    <div><div class="hc-label">Hired</div><div class="hc-value" id="hero-hired">0</div></div>
+                </div>
+                <div class="hero-card hero-card-3">
+                    <div class="hc-icon" style="background:linear-gradient(135deg,#F59E0B,#F97316)">⏳</div>
+                    <div><div class="hc-label">Pending</div><div class="hc-value" id="hero-pending">0</div></div>
+                </div>
+                <div class="hero-card hero-card-4">
+                    <div class="hc-icon" style="background:linear-gradient(135deg,#3B82F6,#06B6D4)">📊</div>
+                    <div><div class="hc-label">In Progress</div><div class="hc-value" id="hero-inprog">0</div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Access Cards -->
+        <section class="quick-access">
+            <div class="qa-card" onclick="navigate('requester')">
+                <div class="qa-icon qa-icon-req">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="18" r="8" stroke="currentColor" stroke-width="2.5"/><path d="M8 42c0-8.837 7.163-16 16-16s16 7.163 16 16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                </div>
+                <h3>I'm a Requester</h3>
+                <p>TLs & OMs — raise a new hiring request, fill in details, and get a unique ticket ID to track progress.</p>
+                <span class="qa-cta">Open Request Form →</span>
+            </div>
+            <div class="qa-card" onclick="navigate('hiring')">
+                <div class="qa-icon qa-icon-hire">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="18" cy="16" r="6" stroke="currentColor" stroke-width="2.2"/><circle cx="32" cy="16" r="6" stroke="currentColor" stroke-width="2.2"/><path d="M6 38c0-6.627 5.373-12 12-12 2.21 0 4.284.598 6.063 1.64M26 38c0-6.627 5.373-12 12-12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M36 28v8m-4-4h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                </div>
+                <h3>I'm Hiring Team</h3>
+                <p>View all raised tickets, update hiring stages, track hired vs pending count, and add remarks.</p>
+                <span class="qa-cta">Open Dashboard →</span>
+            </div>
+            <div class="qa-card" onclick="navigate('tracker')">
+                <div class="qa-icon qa-icon-track">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="22" cy="22" r="12" stroke="currentColor" stroke-width="2.5"/><path d="M38 38l-7.5-7.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M22 16v6l4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <h3>Track a Ticket</h3>
+                <p>Already have a ticket ID? Look up the real-time status, hired count, and full activity timeline.</p>
+                <span class="qa-cta">Track Now →</span>
+            </div>
+        </section>
+
+        <!-- Recent Activity -->
+        <section class="recent-section" id="recent-section">
+            <h2 class="section-title">📌 Recent Activity</h2>
+            <div id="recent-activity" class="recent-grid"></div>
+        </section>
+    </main>
+
+    <!-- ========== PAGE: REQUESTER ========== -->
+    <main id="page-requester" class="page">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Raise a Hiring Request</h1>
+                <p class="page-desc">Fill in the details below and submit to generate a unique ticket ID.</p>
+            </div>
+        </div>
+
+        <div class="requester-layout">
+            <section class="form-panel glass-card">
+                <div class="panel-header">
+                    <span class="dot green"></span>
+                    <h2>Request Details</h2>
+                </div>
+                <form id="hiring-form" onsubmit="submitRequest(event)" autocomplete="off">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="req-department">Department <span class="req">*</span></label>
+                            <select id="req-department" required>
+                                <option value="">Select Department</option>
+                                <option>Operations</option>
+                                <option>Technology</option>
+                                <option>Finance</option>
+                                <option>HR</option>
+                                <option>Sales</option>
+                                <option>Marketing</option>
+                                <option>Quality</option>
+                                <option>Training</option>
+                                <option>Admin</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-requested-by">Requested By <span class="req">*</span></label>
+                            <input type="text" id="req-requested-by" placeholder="Your full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-project">Project Name <span class="req">*</span></label>
+                            <input type="text" id="req-project" placeholder="Project / LOB name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-hiring-reason">Hiring Reason <span class="req">*</span></label>
+                            <select id="req-hiring-reason" required>
+                                <option value="">Select Reason</option>
+                                <option>New Project</option>
+                                <option>Expansion</option>
+                                <option>Replacement</option>
+                                <option>Attrition Backfill</option>
+                                <option>Seasonal Demand</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-billable">Billable / Non-Billable <span class="req">*</span></label>
+                            <select id="req-billable" required>
+                                <option value="">Select Type</option>
+                                <option>Billable</option>
+                                <option>Non-Billable</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-hc">Required Headcount <span class="req">*</span></label>
+                            <input type="number" id="req-hc" min="1" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-site">Site / Location <span class="req">*</span></label>
+                            <input type="text" id="req-site" placeholder="e.g. Noida, Gurugram, Mumbai" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="req-doj">Expected Date of Joining <span class="req">*</span></label>
+                            <input type="date" id="req-doj" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="req-reason-detail">Detailed Reason / Additional Notes</label>
+                            <textarea id="req-reason-detail" placeholder="Provide any additional context about this hiring need..." rows="3"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-lg btn-block" id="btn-submit-request">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Submit Request
+                    </button>
+                </form>
+            </section>
+
+            <section class="tickets-panel glass-card">
+                <div class="panel-header">
+                    <span class="dot blue"></span>
+                    <h2>My Submitted Tickets</h2>
+                </div>
+                <div class="ticket-search">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    <input type="text" id="requester-search" placeholder="Search by Ticket ID, dept or name..." oninput="renderRequesterTickets()">
+                </div>
+                <div id="requester-ticket-list" class="ticket-list"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ========== PAGE: HIRING DASHBOARD ========== -->
+    <main id="page-hiring" class="page">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Hiring Team Dashboard</h1>
+                <p class="page-desc">Manage, update, and track all hiring requests in real time.</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:#6C63FF">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="2"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="2"/></svg>
+                </div>
+                <div class="stat-data"><span class="stat-num" id="stat-total-num">0</span><span class="stat-lbl">Total Requests</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:#F59E0B">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="stat-data"><span class="stat-num" id="stat-open-num">0</span><span class="stat-lbl">Open</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:#3B82F6">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m12.14 0l-2.83-2.83M9.76 9.76L6.93 6.93" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="stat-data"><span class="stat-num" id="stat-inprogress-num">0</span><span class="stat-lbl">In Progress</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:#10B981">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>
+                </div>
+                <div class="stat-data"><span class="stat-num" id="stat-completed-num">0</span><span class="stat-lbl">Completed</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:#EF4444">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M15 9l-6 6m0-6l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="stat-data"><span class="stat-num" id="stat-cancelled-num">0</span><span class="stat-lbl">Cancelled</span></div>
+            </div>
+            <div class="stat-card stat-card-hc">
+                <div class="stat-icon-wrap" style="--sc-clr:#8B5CF6">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M3 21c0-4.418 3.582-8 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 11v6m-3-3h6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-num"><span id="stat-hired-num">0</span><span style="opacity:.4;font-weight:400"> / </span><span id="stat-required-num">0</span></span>
+                    <span class="stat-lbl">Hired / Required HC</span>
+                </div>
+                <div class="stat-progress" id="stat-hc-progress"><div class="stat-progress-fill" id="stat-hc-fill"></div></div>
+            </div>
+        </div>
+
+        <!-- Admin & Data Utilities -->
+        <div class="glass-card collapsible-panel" style="margin: 20px 40px 0; max-width: 1360px; overflow: hidden;">
+            <div class="collapsible-header" onclick="toggleAdminPanel()" style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: rgba(255,255,255,0.02); transition: var(--transition);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.2rem;">⚙️</span>
+                    <strong style="font-size: 0.9rem; letter-spacing: 0.4px;">Recruiter Tools & Data Management</strong>
+                </div>
+                <svg id="admin-chevron" width="18" height="18" fill="none" viewBox="0 0 24 24" style="transition: var(--transition); transform: rotate(0deg); color: var(--text-dim);"><path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div id="admin-panel-content" class="collapsible-content hidden" style="padding: 20px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <!-- Left: Backup and Restore -->
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-right: 12px; border-right: 1px solid var(--border);">
+                    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; letter-spacing: 0.4px;">💾 Database Backup & Restore</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Download a complete JSON database dump to backup your records locally, or upload a backup file to restore them.</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button type="button" class="btn-primary" onclick="backupDatabaseJSON()" style="flex: 1; min-width: 120px; padding: 10px 14px; font-size: 0.8rem;">
+                            📥 Export JSON
+                        </button>
+                        <div style="flex: 1; min-width: 120px; position: relative;">
+                            <button type="button" class="btn-outline" onclick="document.getElementById('import-json-file').click()" style="width: 100%; padding: 10px 14px; font-size: 0.8rem;">
+                                📤 Restore JSON
+                            </button>
+                            <input type="file" id="import-json-file" accept=".json" onchange="restoreDatabaseJSON(event)" style="display: none;">
+                        </div>
+                        <button type="button" class="btn-outline" onclick="loadPremiumDemoData()" style="flex: 1; min-width: 120px; padding: 10px 14px; font-size: 0.8rem; border-color: rgba(139, 92, 246, 0.4); color: var(--purple);">
+                            ✨ Load Demo Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right: Smart Excel Import -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; letter-spacing: 0.4px;">📥 Smart Excel Data Import</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Upload an Excel workbook (`.xlsx`, `.xls`) to merge or import records. If a Ticket ID exists, it will be updated; new IDs will be created.</p>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="flex: 1; position: relative;">
+                            <button type="button" class="btn-primary" onclick="document.getElementById('import-excel-file').click()" style="width: 100%; padding: 10px 16px; font-size: 0.82rem; background: linear-gradient(135deg, var(--green), #059669); box-shadow: 0 4px 15px rgba(16,185,129,.2);">
+                                🟢 Choose & Import Excel File
+                            </button>
+                            <input type="file" id="import-excel-file" accept=".xlsx, .xls" onchange="importExcelData(event)" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar glass-card">
+            <div class="filter-group">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input type="text" id="hiring-search" placeholder="Search tickets..." oninput="renderHiringTickets()">
+            </div>
+            <select id="filter-status" onchange="renderHiringTickets()">
+                <option value="">All Statuses</option>
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+            </select>
+            <select id="filter-dept" onchange="renderHiringTickets()">
+                <option value="">All Departments</option>
+            </select>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrapper glass-card">
+            <div class="table-scroll">
+                <table id="hiring-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket ID</th>
+                            <th>Date</th>
+                            <th>Department</th>
+                            <th>Project</th>
+                            <th>Requested By</th>
+                            <th>Required HC</th>
+                            <th>Hired</th>
+                            <th>Pending</th>
+                            <th>Stage</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hiring-table-body"></tbody>
+                </table>
+            </div>
+            <div id="hiring-empty" class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No Hiring Requests Yet</h3>
+                <p>Requests raised by TLs and OMs will appear here.</p>
+                <button class="btn-outline" onclick="navigate('requester')">Raise First Request →</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== PAGE: ANALYTICS ========== -->
+    <main id="page-analytics" class="page">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Recruitment Analytics & Insights</h1>
+                <p class="page-desc">Track request trends, hiring velocities, and stage statistics across your organization.</p>
+            </div>
+        </div>
+
+        <!-- KPI Cards Ribbon -->
+        <div class="stats-grid" style="margin-bottom: 24px;">
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:var(--cyan)">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-num" id="ana-kpi-fulfillment">0 days</span>
+                    <span class="stat-lbl">Avg. Fulfillment Velocity</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:var(--green)">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-num" id="ana-kpi-rate">0%</span>
+                    <span class="stat-lbl">Active Hiring Rate</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:var(--amber)">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="2"/></svg>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-num" id="ana-kpi-tickets">0 / 0</span>
+                    <span class="stat-lbl">Completed / Total Requests</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:var(--purple)">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M17 11h6m-3-3v6M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-num" id="ana-kpi-requesters">0</span>
+                    <span class="stat-lbl">Active Requesters</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="--sc-clr:var(--accent2)">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-num" id="ana-kpi-cost">₱0</span>
+                    <span class="stat-lbl">Avg. Cost per Hire</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Ribbon -->
+        <div class="filters-bar glass-card" style="margin-bottom: 24px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 8px;">📊 Analytics Filters:</div>
+            
+            <select id="ana-filter-dept" onchange="refreshAnalytics()" style="min-width: 180px;">
+                <option value="">All Departments</option>
+            </select>
+            
+            <select id="ana-filter-requester" onchange="refreshAnalytics()" style="min-width: 180px;">
+                <option value="">All Requesters</option>
+            </select>
+
+            <div style="flex: 1;"></div>
+
+            <!-- Download PPT slides button -->
+            <button type="button" class="btn-export" onclick="downloadPPTReport()" title="Download Analytics PowerPoint Presentation" style="background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; font-size: 0.82rem; font-weight: 700; padding: 10px 16px; margin-right: 12px; box-shadow: 0 4px 15px rgba(237,25,36,0.3); display: inline-flex; align-items: center; gap: 6px;">
+                📥 Download PPT Slides
+            </button>
+
+            <!-- Time Period Selector -->
+            <div class="time-period-selector" style="display: flex; background: var(--surface); border: 1px solid var(--border); padding: 4px; border-radius: var(--radius-sm);">
+                <button type="button" class="btn-period active" onclick="setPeriodTrend('daily')">Daily</button>
+                <button type="button" class="btn-period" onclick="setPeriodTrend('weekly')">Weekly</button>
+                <button type="button" class="btn-period" onclick="setPeriodTrend('monthly')">Monthly</button>
+            </div>
+        </div>
+
+        <!-- Chart Panels Grid -->
+        <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; padding: 0 40px; max-width: 1440px; margin: 0 auto; margin-bottom: 40px;">
+            <!-- Main Trend Chart -->
+            <div class="glass-card chart-card-lg">
+                <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    📈 Headcount Fulfillment Trend
+                    <span id="trend-period-lbl" style="font-size: 0.74rem; background: rgba(108,99,255,.15); color: var(--accent); padding: 2px 8px; border-radius: 12px; text-transform: capitalize;">daily</span>
+                </h3>
+                <div style="flex: 1; position: relative;">
+                    <canvas id="chart-trend"></canvas>
+                </div>
+            </div>
+
+            <!-- Stage Pipeline -->
+            <div class="glass-card chart-card-lg">
+                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">📋 Stage Pipeline Analysis</h3>
+                <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center;">
+                    <canvas id="chart-pipeline"></canvas>
+                </div>
+            </div>
+
+            <!-- Department Headcount Ratios -->
+            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Department Headcount Fulfillment</h3>
+                <div style="flex: 1; position: relative;">
+                    <canvas id="chart-department"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Requesters -->
+            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">👑 Top Requesters Analysis</h3>
+                <div style="flex: 1; position: relative;">
+                    <canvas id="chart-requesters"></canvas>
+                </div>
+            </div>
+
+            <!-- Sourcing Channel ROI Analysis -->
+            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    💵 Sourcing Channel ROI Analysis
+                </h3>
+                <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none; flex: 1; display: flex; flex-direction: column;">
+                    <div class="table-scroll" style="flex: 1;">
+                        <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase;">Channel</th>
+                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: center;">Hires</th>
+                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Total Spend</th>
+                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Cost Per Hire</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roi-table-body">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost per Hire by Department -->
+            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Cost per Hire by Department</h3>
+                <div style="flex: 1; position: relative;">
+                    <canvas id="chart-cost"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== PAGE: UNIFIED AUTH GATE ========== -->
+    <main id="page-auth" class="page">
+        <div class="tracker-container auth-container">
+            <div class="tracker-hero auth-hero">
+                <div class="tracker-icon-bg auth-icon-bg">
+                    <svg width="64" height="64" fill="none" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <h1 class="page-title">Intelegencia RMG Portal</h1>
+                <p class="page-desc">Sign in or sign up to access your recruitment management tools.</p>
+            </div>
+            
+            <div class="auth-box glass-card">
+                <!-- Auth Tabs Selector -->
+                <div class="auth-tabs">
+                    <button type="button" class="auth-tab-btn active" id="btn-tab-login" onclick="toggleAuthTab('login')">Sign In</button>
+                    <button type="button" class="auth-tab-btn" id="btn-tab-signup" onclick="toggleAuthTab('signup')">Sign Up</button>
+                </div>
+                
+                <!-- Sign In Form -->
+                <form id="auth-login-form" onsubmit="submitLogin(event)" autocomplete="off">
+                    <div class="form-group auth-form-group">
+                        <label for="login-email">Corporate Email <span class="req">*</span></label>
+                        <input type="email" id="login-email" placeholder="e.g. user@intelegencia.com" required>
+                    </div>
+                    <div class="form-group auth-form-group">
+                        <label for="login-password">Password <span class="req">*</span></label>
+                        <div class="password-wrapper">
+                            <input type="password" id="login-password" placeholder="Enter password" required>
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('login-password')">
+                                <svg class="eye-icon" width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="auth-login-error" class="hidden">❌ Invalid credentials.</div>
+                    <button type="submit" class="btn-primary btn-block btn-lg" id="btn-login-submit">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Sign In
+                    </button>
+                    <p class="auth-help-text">
+                        Default Admin: <code class="auth-code">admin@intelegencia.com</code> / <code class="auth-code">admin</code><br>
+                        Default Requester: <code class="auth-code">requester@intelegencia.com</code> / <code class="auth-code">requester</code>
+                    </p>
+                </form>
+                
+                <!-- Sign Up Form -->
+                <form id="auth-signup-form" onsubmit="submitSignup(event)" autocomplete="off" class="hidden">
+                    <div class="form-group auth-form-group">
+                        <label for="signup-name">Full Name <span class="req">*</span></label>
+                        <input type="text" id="signup-name" placeholder="Your full name" required>
+                    </div>
+                    <div class="form-group auth-form-group">
+                        <label for="signup-email">Corporate Email <span class="req">*</span></label>
+                        <input type="email" id="signup-email" placeholder="e.g. user@intelegencia.com" required>
+                    </div>
+                    <div class="form-group auth-form-group">
+                        <label for="signup-password">Password <span class="req">*</span></label>
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password" placeholder="Create password" required>
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('signup-password')">
+                                <svg class="eye-icon" width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group auth-form-group">
+                        <label for="signup-role">Portal Role <span class="req">*</span></label>
+                        <select id="signup-role" required onchange="toggleRegisterRole(this.value)">
+                            <option value="Requester">Requester</option>
+                            <option value="HR Team / Admin">HR Team / Admin</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Passcode section (for Admin) -->
+                    <div class="form-group hidden" id="signup-passcode-group">
+                        <label for="signup-passcode" class="passcode-label">Recruiter Security Passcode <span class="req">*</span></label>
+                        <input type="password" id="signup-passcode" placeholder="Enter RMG security passcode">
+                        <small class="passcode-help">Security passcode is required to register as HR/Admin</small>
+                    </div>
+                    
+                    <div id="auth-signup-error" class="hidden">❌ Registration error.</div>
+                    <button type="submit" class="btn-primary btn-block btn-lg" id="btn-signup-submit">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== PAGE: TRACKER ========== -->
+    <main id="page-tracker" class="page">
+        <div class="tracker-container">
+            <div class="tracker-hero">
+                <div class="tracker-icon-bg">
+                    <svg width="64" height="64" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <h1 class="page-title">Track Your Ticket</h1>
+                <p class="page-desc">Enter your ticket ID to see real-time status and complete details.</p>
+            </div>
+            <div class="tracker-search-box glass-card">
+                <div class="tracker-input-row">
+                    <input type="text" id="tracker-ticket-id" placeholder="Enter Ticket ID (e.g. RMG-2026-0001)" autocomplete="off">
+                    <button class="btn-primary" onclick="lookupTicket()" id="btn-track">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        Track
+                    </button>
+                </div>
+            </div>
+            <div id="tracker-result" class="tracker-result hidden"></div>
+        </div>
+    </main>
+
+    <!-- ========== MODAL: UPDATE TICKET ========== -->
+    <div id="update-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
+        <div class="modal glass-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+            <h2 class="modal-title">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Update Ticket <span id="modal-ticket-id" style="color:var(--accent)"></span>
+            </h2>
+            <div id="modal-ticket-summary" class="modal-summary"></div>
+            <form id="update-form" onsubmit="saveUpdate(event)">
+                <div class="form-grid modal-form">
+                    <div class="form-group">
+                        <label for="upd-stage">Stage</label>
+                        <select id="upd-stage">
+                            <option>Sourcing</option>
+                            <option>Screening</option>
+                            <option>Interview Scheduled</option>
+                            <option>Interview Done</option>
+                            <option>Offer Rolled Out</option>
+                            <option>Offer Accepted</option>
+                            <option>Joined</option>
+                            <option>Dropped</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="upd-status">Status</label>
+                        <select id="upd-status">
+                            <option>Open</option>
+                            <option>In Progress</option>
+                            <option>Completed</option>
+                            <option>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="upd-hired">Hired Count</label>
+                        <input type="number" id="upd-hired" min="0" value="0">
+                    </div>
+                    <div class="form-group" style="position: relative;">
+                        <label for="upd-channel" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Sourcing Channel</span>
+                            <button type="button" onclick="toggleAddCustomChannelInput()" style="background: none; border: none; color: var(--accent2); font-size: 0.72rem; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 0;">+ Add New</button>
+                        </label>
+                        <select id="upd-channel">
+                            <!-- Populated dynamically -->
+                        </select>
+                        <div id="custom-channel-container" class="hidden" style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="upd-channel-custom" placeholder="New Channel Name" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; margin: 0;">
+                            <button type="button" class="btn-table" onclick="addCustomSourcingChannel()" style="padding: 8px 14px; font-size: 0.8rem; margin: 0; background: var(--green);">Add</button>
+                            <button type="button" class="btn-ghost" onclick="toggleAddCustomChannelInput()" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.1); height: auto; margin: 0;">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="upd-cost">Recruitment Spend (₱)</label>
+                        <input type="number" id="upd-cost" min="0" value="0" placeholder="e.g. 15000">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="upd-remarks">Remarks</label>
+                        <textarea id="upd-remarks" rows="3" placeholder="Add remarks or notes…"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Smart Email Communications -->
+                <div class="form-group full-width" style="margin-top: 8px; padding: 14px; border: 1px dashed rgba(108,99,255,0.3); border-radius: var(--radius-sm); background: rgba(108,99,255,0.03);">
+                    <label style="color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        📧 Recruiter Communications (Smart Mailer)
+                    </label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn-table-view" onclick="generateEmailTemplate('update')" style="margin: 0; padding: 6px 10px; font-size: 0.72rem; flex: 1; border-color: rgba(108,99,255,0.3); color: var(--accent);">Update Requester</button>
+                        <button type="button" class="btn-table-view" onclick="generateEmailTemplate('interview')" style="margin: 0; padding: 6px 10px; font-size: 0.72rem; flex: 1; border-color: rgba(16,185,129,0.3); color: var(--green);">Invite Candidate</button>
+                        <button type="button" class="btn-table-view" onclick="generateEmailTemplate('offer')" style="margin: 0; padding: 6px 10px; font-size: 0.72rem; flex: 1; border-color: rgba(245,158,11,0.3); color: var(--amber);">Release Offer</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-ghost" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: TICKET DETAIL ========== -->
+    <div id="detail-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeDetailModal()">
+        <div class="modal modal-wide glass-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
+            <h2 class="modal-title">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                Ticket Details
+            </h2>
+            <div id="detail-content"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-ghost" onclick="closeDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SUCCESS MODAL ========== -->
+    <div id="success-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSuccessModal()">
+        <div class="modal modal-success glass-card" onclick="event.stopPropagation()">
+            <div class="success-animation">
+                <svg class="success-checkmark" viewBox="0 0 80 80">
+                    <circle class="success-circle" cx="40" cy="40" r="36" fill="none" stroke="#10B981" stroke-width="3"/>
+                    <path class="success-check" d="M24 40l10 10 22-22" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h2 class="success-title">Request Submitted!</h2>
+            <p class="success-desc">Your hiring request has been created successfully.</p>
+            <div class="success-ticket-id" id="success-ticket-display"></div>
+            <p class="success-note">Save this Ticket ID to track your request status anytime.</p>
+            <div class="modal-actions" style="justify-content:center">
+                <button class="btn-outline" onclick="copyTicketId()">📋 Copy Ticket ID</button>
+                <button class="btn-primary" onclick="closeSuccessModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TOAST ========== -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-icon-wrap"><svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="toast-body">
+            <strong id="toast-title">Success</strong>
+            <span id="toast-msg"></span>
+        </div>
+        <button class="toast-close" onclick="document.getElementById('toast').classList.add('hidden')">&times;</button>
+    </div>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="site-footer" id="site-footer">
+        <div class="footer-inner">
+            <span>© 2026 intelegencia — Recruitment Management Portal</span>
+            <span class="footer-sep">·</span>
+            <span>Built for Internal Use</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

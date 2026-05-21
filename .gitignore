@@ -1,0 +1,12 @@
+# Windows system files
+Thumbs.db
+Desktop.ini
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
