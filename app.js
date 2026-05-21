@@ -1174,6 +1174,170 @@ function logout() {
     navigate('auth');
 }
 
+// ───── Forgot Password Flow ─────
+let currentResetEmail = '';
+let currentResetOTP = '';
+
+function handleForgotSubmit(e) {
+    if (e) e.preventDefault();
+    const step1 = document.getElementById('forgot-step-1');
+    if (step1 && !step1.classList.contains('hidden')) {
+        sendResetOTP();
+    } else {
+        submitPasswordReset();
+    }
+}
+
+function showForgotForm() {
+    document.getElementById('auth-login-form')?.classList.add('hidden');
+    document.getElementById('auth-signup-form')?.classList.add('hidden');
+    document.getElementById('auth-forgot-form')?.classList.remove('hidden');
+    
+    // Hide tabs selector
+    const tabs = document.querySelector('.auth-tabs');
+    if (tabs) tabs.style.display = 'none';
+    
+    // Reset steps
+    document.getElementById('forgot-step-1')?.classList.remove('hidden');
+    document.getElementById('forgot-step-2')?.classList.add('hidden');
+    
+    // Clear fields
+    const emailField = document.getElementById('forgot-email');
+    if (emailField) emailField.value = '';
+    
+    const otpField = document.getElementById('forgot-otp');
+    if (otpField) otpField.value = '';
+    
+    const newPassField = document.getElementById('forgot-new-password');
+    if (newPassField) newPassField.value = '';
+    
+    const confirmPassField = document.getElementById('forgot-confirm-password');
+    if (confirmPassField) confirmPassField.value = '';
+    
+    document.getElementById('auth-forgot-error')?.classList.add('hidden');
+    document.getElementById('auth-reset-error')?.classList.add('hidden');
+    
+    emailField?.focus();
+}
+
+function hideForgotForm() {
+    document.getElementById('auth-forgot-form')?.classList.add('hidden');
+    document.getElementById('auth-login-form')?.classList.remove('hidden');
+    
+    // Show tabs selector
+    const tabs = document.querySelector('.auth-tabs');
+    if (tabs) tabs.style.display = '';
+    
+    // Reset tabs selection back to Login
+    toggleAuthTab('login');
+}
+
+function sendResetOTP() {
+    const email = val('forgot-email').toLowerCase();
+    const errorEl = document.getElementById('auth-forgot-error');
+    if (!email) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ Please enter your corporate email.';
+        }
+        return;
+    }
+    
+    const users = loadUsers();
+    const userExists = users.find(u => u.email.toLowerCase() === email);
+    
+    if (!userExists) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ Account with this corporate email was not found.';
+        }
+        return;
+    }
+    
+    if (errorEl) errorEl.classList.add('hidden');
+    
+    // Generate a 6-digit mock OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    currentResetEmail = email;
+    currentResetOTP = otp;
+    
+    // Show toast with OTP
+    showToast('🔒 Verification OTP Sent', `Your demo password reset verification code is: ${otp}`);
+    
+    // Transition to Step 2
+    document.getElementById('forgot-step-1')?.classList.add('hidden');
+    document.getElementById('forgot-step-2')?.classList.remove('hidden');
+    document.getElementById('forgot-otp')?.focus();
+}
+
+function submitPasswordReset() {
+    const otp = val('forgot-otp');
+    const newPass = val('forgot-new-password');
+    const confirmPass = val('forgot-confirm-password');
+    const errorEl = document.getElementById('auth-reset-error');
+    
+    if (!otp || !newPass || !confirmPass) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ All fields are required.';
+        }
+        return;
+    }
+    
+    if (otp !== currentResetOTP) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ Invalid verification OTP.';
+        }
+        return;
+    }
+    
+    if (newPass.length < 4) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ Password must be at least 4 characters long.';
+        }
+        return;
+    }
+    
+    if (newPass !== confirmPass) {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ Passwords do not match.';
+        }
+        return;
+    }
+    
+    if (errorEl) errorEl.classList.add('hidden');
+    
+    // Update password in database
+    const users = loadUsers();
+    const idx = users.findIndex(u => u.email.toLowerCase() === currentResetEmail.toLowerCase());
+    if (idx !== -1) {
+        users[idx].password = newPass;
+        saveUsers(users);
+        
+        showToast('Password Reset Success', 'Your password was updated. Signing in...');
+        
+        // Auto sign-in the user
+        const sessionUser = {
+            email: users[idx].email,
+            name: users[idx].name,
+            role: users[idx].role
+        };
+        sessionStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(sessionUser));
+        
+        // Hide forgot form and navigate
+        hideForgotForm();
+        navigate('home');
+    } else {
+        if (errorEl) {
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = '❌ Error updating password. Please try again.';
+        }
+    }
+}
+
 // ───── Data Management Collapsible Panel ─────
 function toggleAdminPanel() {
     const content = document.getElementById('admin-panel-content');

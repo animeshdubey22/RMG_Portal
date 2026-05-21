@@ -638,7 +638,10 @@
                         <input type="email" id="login-email" placeholder="e.g. user@intelegencia.com" required>
                     </div>
                     <div class="form-group auth-form-group">
-                        <label for="login-password">Password <span class="req">*</span></label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label for="login-password" style="margin: 0;">Password <span class="req">*</span></label>
+                            <a href="javascript:void(0)" onclick="showForgotForm()" style="font-size: 0.72rem; color: var(--accent2); font-weight: 600; text-decoration: none; transition: var(--transition);" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--accent2)'">Forgot Password?</a>
+                        </div>
                         <div class="password-wrapper">
                             <input type="password" id="login-password" placeholder="Enter password" required>
                             <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('login-password')">
@@ -655,6 +658,70 @@
                         Default Admin: <code class="auth-code">admin@intelegencia.com</code> / <code class="auth-code">admin</code><br>
                         Default Requester: <code class="auth-code">requester@intelegencia.com</code> / <code class="auth-code">requester</code>
                     </p>
+                </form>
+                
+                <!-- Forgot Password Form -->
+                <form id="auth-forgot-form" autocomplete="off" class="hidden" onsubmit="handleForgotSubmit(event)">
+                    <h3 style="font-size: 1.05rem; margin-bottom: 8px; color: var(--text); display: flex; align-items: center; gap: 6px;">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" style="color: var(--accent);"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Reset Password
+                    </h3>
+                    <p style="font-size: 0.76rem; color: var(--text-dim); margin-bottom: 16px; line-height: 1.4;">
+                        Enter your corporate email address. We will verify your account and trigger a demo verification OTP to set a new password.
+                    </p>
+                    
+                    <!-- Step 1: Email Input -->
+                    <div id="forgot-step-1">
+                        <div class="form-group auth-form-group">
+                            <label for="forgot-email">Corporate Email <span class="req">*</span></label>
+                            <input type="email" id="forgot-email" placeholder="e.g. user@intelegencia.com">
+                        </div>
+                        <div id="auth-forgot-error" class="hidden" style="color: var(--red); font-size: 0.74rem; margin-top: -6px; margin-bottom: 12px; font-weight: 600;"></div>
+                        <button type="submit" class="btn-primary btn-block btn-lg">
+                            Verify & Send OTP
+                        </button>
+                    </div>
+
+                    <!-- Step 2: OTP & New Password -->
+                    <div id="forgot-step-2" class="hidden">
+                        <div class="form-group auth-form-group">
+                            <label for="forgot-otp">Enter Verification OTP <span class="req">*</span></label>
+                            <input type="text" id="forgot-otp" placeholder="Enter 6-digit OTP" maxlength="6" style="font-family: monospace; letter-spacing: 4px; text-align: center; font-size: 1.15rem; font-weight: bold; background: rgba(0,0,0,0.25);">
+                            <small style="color: var(--text-muted); font-size: 0.68rem; margin-top: 4px; display: block;">Check the top-right screen notification for your demo verification code.</small>
+                        </div>
+                        
+                        <div class="form-group auth-form-group">
+                            <label for="forgot-new-password">New Password <span class="req">*</span></label>
+                            <div class="password-wrapper">
+                                <input type="password" id="forgot-new-password" placeholder="Min. 4 characters">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('forgot-new-password')">
+                                    <svg class="eye-icon" width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group auth-form-group">
+                            <label for="forgot-confirm-password">Confirm New Password <span class="req">*</span></label>
+                            <div class="password-wrapper">
+                                <input type="password" id="forgot-confirm-password" placeholder="Retype password">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('forgot-confirm-password')">
+                                    <svg class="eye-icon" width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="auth-reset-error" class="hidden" style="color: var(--red); font-size: 0.74rem; margin-bottom: 12px; font-weight: 600;"></div>
+                        <button type="submit" class="btn-primary btn-block btn-lg">
+                            Reset Password & Sign In
+                        </button>
+                    </div>
+
+                    <!-- Back to Login -->
+                    <div style="text-align: center; margin-top: 18px; border-top: 1px dashed var(--border); padding-top: 12px;">
+                        <a href="javascript:void(0)" onclick="hideForgotForm()" style="font-size: 0.78rem; color: var(--text-muted); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: var(--transition);" onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text-muted)'">
+                            ← Back to Sign In
+                        </a>
+                    </div>
                 </form>
                 
                 <!-- Sign Up Form -->
