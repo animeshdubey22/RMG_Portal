@@ -341,7 +341,7 @@
                 </div>
                 <svg id="admin-chevron" width="18" height="18" fill="none" viewBox="0 0 24 24" style="transition: var(--transition); transform: rotate(0deg); color: var(--text-dim);"><path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <div id="admin-panel-content" class="collapsible-content hidden" style="padding: 20px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div id="admin-panel-content" class="collapsible-content hidden" style="padding: 20px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 24px;">
                 <!-- Left: Backup and Restore -->
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-right: 12px; border-right: 1px solid var(--border);">
                     <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; letter-spacing: 0.4px;">💾 Database Backup & Restore</h3>
@@ -363,7 +363,7 @@
                 </div>
 
                 <!-- Right: Smart Excel Import -->
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-right: 12px; border-right: 1px solid var(--border);">
                     <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; letter-spacing: 0.4px;">📥 Smart Excel Data Import</h3>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Upload an Excel workbook (`.xlsx`, `.xls`) to merge or import records. If a Ticket ID exists, it will be updated; new IDs will be created.</p>
                     <div style="display: flex; gap: 12px; align-items: center;">
@@ -372,6 +372,36 @@
                                 🟢 Choose & Import Excel File
                             </button>
                             <input type="file" id="import-excel-file" accept=".xlsx, .xls" onchange="importExcelData(event)" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 3: User Accounts & Security -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; letter-spacing: 0.4px;">👤 User Accounts & Security</h3>
+                    
+                    <!-- Passcode Config -->
+                    <div style="background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;">
+                        <label for="admin-passcode-input" style="font-size: 0.7rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin: 0;">Recruiter Signup Passcode</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="admin-passcode-input" placeholder="e.g. RMG123" style="flex: 1; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; color: var(--text); font-size: 0.8rem; font-family: monospace; height: 32px;">
+                            <button type="button" class="btn-primary" onclick="updateRecruiterPasscode()" style="padding: 0 14px; font-size: 0.76rem; margin: 0; height: 32px; display: flex; align-items: center; justify-content: center;">Save</button>
+                        </div>
+                    </div>
+
+                    <!-- User Account Stats & List -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Registered Accounts</span>
+                            <div style="display: flex; gap: 8px; font-size: 0.7rem;">
+                                <span style="color: var(--green); font-weight: 600;">HR/Admin: <span id="admin-stats-hr-count">0</span></span>
+                                <span style="color: var(--text-muted);">|</span>
+                                <span style="color: var(--blue); font-weight: 600;">Requester: <span id="admin-stats-req-count">0</span></span>
+                            </div>
+                        </div>
+                        
+                        <div id="admin-user-list-container" style="max-height: 100px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: rgba(0, 0, 0, 0.15); display: flex; flex-direction: column;">
+                            <!-- Dynamically Rendered User Rows -->
                         </div>
                     </div>
                 </div>

@@ -297,6 +297,11 @@ function navigate(page) {
             populateDeptFilter();
             renderHiringTickets();
             updateDashboardStats();
+            // Initialize passcode value and user list
+            const passcodeVal = localStorage.getItem('rmg_recruiter_passcode') || 'RMG123';
+            const passcodeInp = document.getElementById('admin-passcode-input');
+            if (passcodeInp) passcodeInp.value = passcodeVal;
+            renderAdminUserList();
             break;
         case 'analytics':
             populateAnalyticsFilters();
@@ -1116,7 +1121,8 @@ function submitSignup(e) {
     
     // Recruiter validation check
     if (role === 'HR Team / Admin') {
-        if (passcode !== 'RMG123') {
+        const currentPasscode = localStorage.getItem('rmg_recruiter_passcode') || 'RMG123';
+        if (passcode !== currentPasscode) {
             if (box) {
                 box.classList.add('login-shake');
                 setTimeout(() => box.classList.remove('login-shake'), 400);
@@ -1178,9 +1184,101 @@ function toggleAdminPanel() {
     if (isHidden) {
         content.classList.remove('hidden');
         chevron.style.transform = 'rotate(180deg)';
+        
+        // Refresh values on expand
+        const passcodeVal = localStorage.getItem('rmg_recruiter_passcode') || 'RMG123';
+        const passcodeInp = document.getElementById('admin-passcode-input');
+        if (passcodeInp) passcodeInp.value = passcodeVal;
+        renderAdminUserList();
     } else {
         content.classList.add('hidden');
         chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+// ───── Recruiter Security & User Account Management ─────
+function updateRecruiterPasscode() {
+    const input = document.getElementById('admin-passcode-input');
+    const val = input ? input.value.trim() : '';
+    if (!val) {
+        showToast('Validation Error', 'Passcode cannot be empty.');
+        return;
+    }
+    
+    localStorage.setItem('rmg_recruiter_passcode', val);
+    showToast('Passcode Updated', `Recruiter security passcode set to "${val}"`);
+}
+
+function renderAdminUserList() {
+    const container = document.getElementById('admin-user-list-container');
+    const hrCountEl = document.getElementById('admin-stats-hr-count');
+    const reqCountEl = document.getElementById('admin-stats-req-count');
+    if (!container) return;
+    
+    const users = loadUsers();
+    
+    // Count roles
+    let hrCount = 0;
+    let reqCount = 0;
+    users.forEach(u => {
+        if (u.role === 'HR Team / Admin') hrCount++;
+        else reqCount++;
+    });
+    
+    if (hrCountEl) hrCountEl.textContent = hrCount;
+    if (reqCountEl) reqCountEl.textContent = reqCount;
+    
+    if (!users.length) {
+        container.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.72rem; text-align: center;">No registered accounts.</div>';
+        return;
+    }
+    
+    // Render list of user accounts
+    container.innerHTML = users.map(u => {
+        const isDefault = u.email === 'admin@intelegencia.com' || u.email === 'requester@intelegencia.com';
+        const roleLabel = u.role === 'HR Team / Admin' ? 'Admin' : 'Req';
+        const roleClr = u.role === 'HR Team / Admin' ? 'var(--green)' : 'var(--blue)';
+        
+        return `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.76rem;">
+                <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden; margin-right: 8px;">
+                    <strong style="color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${u.name || 'No Name'}</strong>
+                    <span style="color: var(--text-dim); font-size: 0.66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${u.email}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                    <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: rgba(${u.role === 'HR Team / Admin' ? '16, 185, 129' : '59, 130, 246'}, 0.1); border: 1px solid ${roleClr}; color: ${roleClr}; font-weight: 600;">
+                        ${roleLabel}
+                    </span>
+                    ${isDefault ? '' : `
+                        <button type="button" onclick="deleteUserAccount('${u.email}')" style="background: none; border: none; color: var(--red); cursor: pointer; padding: 2px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6" title="Delete User">
+                            🗑️
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function deleteUserAccount(email) {
+    if (!email) return;
+    if (email === 'admin@intelegencia.com' || email === 'requester@intelegencia.com') {
+        showToast('Action Denied', 'Cannot delete system default user accounts.');
+        return;
+    }
+    
+    const active = getActiveUser();
+    if (active && active.email.toLowerCase() === email.toLowerCase()) {
+        showToast('Action Denied', 'You cannot delete your own logged-in account.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete the user account: ${email}?`)) {
+        let users = loadUsers();
+        users = users.filter(u => u.email.toLowerCase() !== email.toLowerCase());
+        saveUsers(users);
+        showToast('User Deleted', `Account ${email} has been removed.`);
+        renderAdminUserList();
     }
 }
 
