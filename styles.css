@@ -1279,4 +1279,117 @@ body.light-theme .auth-help-text {
     border-top-color: var(--border);
 }
 
+/* ===== ANALYTICS & YoY COMPARISON TABS ===== */
+.ana-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    padding: 0 40px;
+    max-width: 1440px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.ana-tab-btn {
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    border-bottom: 2px solid transparent;
+}
+.ana-tab-btn:hover {
+    color: var(--text);
+}
+.ana-tab-btn.active {
+    color: var(--text);
+    border-bottom: 2px solid var(--accent);
+}
+
+/* Compare Scorecard Grid */
+.compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 0 40px;
+    max-width: 1440px;
+    margin: 0 auto 24px;
+}
+.compare-year-card {
+    background: rgba(17, 24, 39, 0.55);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+}
+.compare-year-card:hover {
+    border-color: var(--border-h);
+    transform: translateY(-2px);
+}
+.compare-year-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+.compare-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+.compare-metric-lbl {
+    color: var(--text-dim);
+}
+.compare-metric-val {
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* Checkboxes style */
+.compare-years-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.compare-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+.compare-checkbox-label input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+.compare-checkbox-label:hover {
+    border-color: var(--border-h);
+    background: var(--surface2);
+}
+
+/* Light theme overrides for comparison card */
+body.light-theme .compare-year-card {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+
 

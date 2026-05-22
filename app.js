@@ -128,7 +128,12 @@ function setTheme(theme) {
     // Redraw charts if we are on the analytics page
     const pageAnalytics = document.getElementById('page-analytics');
     if (pageAnalytics && pageAnalytics.classList.contains('active')) {
-        refreshAnalytics();
+        const compareContainer = document.getElementById('ana-compare-container');
+        if (compareContainer && compareContainer.style.display !== 'none') {
+            refreshComparison();
+        } else {
+            refreshAnalytics();
+        }
     }
 }
 
@@ -2027,22 +2032,80 @@ let trendPeriod = 'daily';
 function populateAnalyticsFilters() {
     const tickets = loadTickets();
     
-    // Departments
+    // Departments (Standard)
     const deptSel = document.getElementById('ana-filter-dept');
     if (deptSel) {
-        const depts = [...new Set(tickets.map(t => t.department))].sort();
+        const depts = [...new Set(tickets.map(t => t.department).filter(Boolean))].sort();
         const cur = deptSel.value;
         deptSel.innerHTML = '<option value="">All Departments</option>' +
             depts.map(d => `<option${d === cur ? ' selected' : ''}>${d}</option>`).join('');
     }
     
-    // Requesters
+    // Requesters (Standard)
     const reqSel = document.getElementById('ana-filter-requester');
     if (reqSel) {
-        const requesters = [...new Set(tickets.map(t => t.requestedBy))].sort();
+        const requesters = [...new Set(tickets.map(t => t.requestedBy).filter(Boolean))].sort();
         const cur = reqSel.value;
         reqSel.innerHTML = '<option value="">All Requesters</option>' +
             requesters.map(r => `<option${r === cur ? ' selected' : ''}>${r}</option>`).join('');
+    }
+
+    // Projects (Standard)
+    const projSel = document.getElementById('ana-filter-project');
+    if (projSel) {
+        const projects = [...new Set(tickets.map(t => t.project).filter(Boolean))].sort();
+        const cur = projSel.value;
+        projSel.innerHTML = '<option value="">All Projects</option>' +
+            projects.map(p => `<option${p === cur ? ' selected' : ''}>${p}</option>`).join('');
+    }
+
+    // Departments (Comparison)
+    const compDeptSel = document.getElementById('compare-filter-dept');
+    if (compDeptSel) {
+        const depts = [...new Set(tickets.map(t => t.department).filter(Boolean))].sort();
+        const cur = compDeptSel.value;
+        compDeptSel.innerHTML = '<option value="">All Departments</option>' +
+            depts.map(d => `<option${d === cur ? ' selected' : ''}>${d}</option>`).join('');
+    }
+
+    // Projects (Comparison)
+    const compProjSel = document.getElementById('compare-filter-project');
+    if (compProjSel) {
+        const projects = [...new Set(tickets.map(t => t.project).filter(Boolean))].sort();
+        const cur = compProjSel.value;
+        compProjSel.innerHTML = '<option value="">All Projects</option>' +
+            projects.map(p => `<option${p === cur ? ' selected' : ''}>${p}</option>`).join('');
+    }
+
+    // Dynamic Years Checklist (Comparison)
+    const yearsWrap = document.getElementById('compare-years-list');
+    if (yearsWrap) {
+        // Keep track of what was checked before rebuilding list
+        const checkedYears = new Set(Array.from(yearsWrap.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value));
+        
+        // Extract years dynamically from tickets' createdAt
+        const years = [...new Set(tickets.map(t => {
+            const d = t.createdAt ? new Date(t.createdAt) : null;
+            return (d && !isNaN(d.getTime())) ? d.getFullYear() : null;
+        }).filter(y => y !== null))].sort((a, b) => a - b); // ascending
+
+        if (years.length === 0) {
+            years.push(new Date().getFullYear());
+        }
+
+        // If no checked years yet (e.g., initial load), select the 2 most recent years
+        if (checkedYears.size === 0) {
+            const sortedDesc = [...years].sort((a, b) => b - a);
+            if (sortedDesc[0]) checkedYears.add(sortedDesc[0].toString());
+            if (sortedDesc[1]) checkedYears.add(sortedDesc[1].toString());
+        }
+
+        yearsWrap.innerHTML = years.map(y => `
+            <label class="compare-checkbox-label">
+                <input type="checkbox" value="${y}" onchange="refreshComparison()" ${checkedYears.has(y.toString()) ? 'checked' : ''}>
+                ${y}
+            </label>
+        `).join('');
     }
 }
 
@@ -2064,10 +2127,12 @@ function refreshAnalytics() {
     const tickets = loadTickets();
     const deptF = document.getElementById('ana-filter-dept')?.value || '';
     const reqF = document.getElementById('ana-filter-requester')?.value || '';
+    const projF = document.getElementById('ana-filter-project')?.value || '';
     
     let filtered = tickets;
     if (deptF) filtered = filtered.filter(t => t.department === deptF);
     if (reqF) filtered = filtered.filter(t => t.requestedBy === reqF);
+    if (projF) filtered = filtered.filter(t => t.project === projF);
     
     // KPIs
     const completedTickets = filtered.filter(t => t.status === 'Completed');
@@ -2103,6 +2168,63 @@ function refreshAnalytics() {
     const avgCost = totalHiredHC > 0 ? Math.round(totalSpend / totalHiredHC) : 0;
     document.getElementById('ana-kpi-cost').textContent = `₱${avgCost.toLocaleString('en-PH')}`;
     
+    // New KPIs calculation
+    // 1. Avg. Age of Open Requests (Days)
+    const openTickets = filtered.filter(t => t.status !== 'Completed' && t.status !== 'Cancelled');
+    let avgOpenAgeText = '—';
+    if (openTickets.length) {
+        let totalDays = 0;
+        let validCount = 0;
+        const today = new Date();
+        openTickets.forEach(t => {
+            if (t.createdAt) {
+                const created = new Date(t.createdAt);
+                if (!isNaN(created.getTime())) {
+                    const diffTime = Math.abs(today - created);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    totalDays += diffDays;
+                    validCount++;
+                }
+            }
+        });
+        if (validCount > 0) {
+            avgOpenAgeText = `${Math.round(totalDays / validCount)} days`;
+        }
+    }
+    const openAgeKpi = document.getElementById('ana-kpi-open-age');
+    if (openAgeKpi) openAgeKpi.textContent = avgOpenAgeText;
+
+    // 2. Highest Hired Positions (Single request)
+    let maxHires = 0;
+    let maxHiresProject = '';
+    filtered.forEach(t => {
+        if ((t.hiredCount || 0) > maxHires) {
+            maxHires = t.hiredCount;
+            maxHiresProject = t.project || 'Unknown';
+        }
+    });
+    const maxHiresText = maxHires > 0 ? `${maxHires} (${maxHiresProject})` : '0';
+    const maxHiresKpi = document.getElementById('ana-kpi-max-hires');
+    if (maxHiresKpi) maxHiresKpi.textContent = maxHiresText;
+
+    // 3. Top Department by Hires
+    const deptHires = {};
+    filtered.forEach(t => {
+        const dept = t.department || 'Other';
+        deptHires[dept] = (deptHires[dept] || 0) + (t.hiredCount || 0);
+    });
+    let topDept = '—';
+    let maxDeptHires = 0;
+    Object.keys(deptHires).forEach(dept => {
+        if (deptHires[dept] > maxDeptHires) {
+            maxDeptHires = deptHires[dept];
+            topDept = dept;
+        }
+    });
+    const topDeptText = maxDeptHires > 0 ? `${topDept} (${maxDeptHires})` : '—';
+    const topDeptKpi = document.getElementById('ana-kpi-top-dept');
+    if (topDeptKpi) topDeptKpi.textContent = topDeptText;
+
     // Sourcing Channel ROI Table
     const channels = loadSourcingChannels();
     const roiData = channels.map(ch => {
@@ -2136,6 +2258,263 @@ function refreshAnalytics() {
     drawCostChart(filtered);
 }
 
+function toggleAnalyticsView(view) {
+    const standardContainer = document.getElementById('ana-standard-container');
+    const compareContainer = document.getElementById('ana-compare-container');
+    const btnStandard = document.getElementById('btn-ana-standard');
+    const btnCompare = document.getElementById('btn-ana-compare');
+    
+    if (view === 'standard') {
+        if (standardContainer) standardContainer.style.display = 'block';
+        if (compareContainer) compareContainer.style.display = 'none';
+        if (btnStandard) btnStandard.classList.add('active');
+        if (btnCompare) btnCompare.classList.remove('active');
+        refreshAnalytics();
+    } else if (view === 'compare') {
+        if (standardContainer) standardContainer.style.display = 'none';
+        if (compareContainer) compareContainer.style.display = 'block';
+        if (btnStandard) btnStandard.classList.remove('active');
+        if (btnCompare) btnCompare.classList.add('active');
+        refreshComparison();
+    }
+}
+
+function refreshComparison() {
+    const tickets = loadTickets();
+    
+    // 1. Get Comparison Filter Values
+    const yearsWrap = document.getElementById('compare-years-list');
+    const selectedYears = Array.from(yearsWrap?.querySelectorAll('input[type="checkbox"]:checked') || []).map(cb => parseInt(cb.value)).sort((a, b) => a - b);
+    
+    const selectedMonth = document.getElementById('compare-filter-month')?.value || 'all';
+    const deptF = document.getElementById('compare-filter-dept')?.value || '';
+    const projF = document.getElementById('compare-filter-project')?.value || '';
+    
+    // 2. Filter tickets by Department and Project
+    let filtered = tickets;
+    if (deptF) filtered = filtered.filter(t => t.department === deptF);
+    if (projF) filtered = filtered.filter(t => t.project === projF);
+    
+    // 3. Populate Scorecards Grid
+    const scorecardGrid = document.getElementById('compare-grid-scorecards');
+    if (scorecardGrid) {
+        if (selectedYears.length === 0) {
+            scorecardGrid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">📅</div>
+                    <h3>No Years Selected</h3>
+                    <p>Please select at least one year to compare.</p>
+                </div>
+            `;
+        } else {
+            scorecardGrid.innerHTML = selectedYears.map(year => {
+                // Filter tickets to current year
+                let yearTickets = filtered.filter(t => {
+                    const d = t.createdAt ? new Date(t.createdAt) : null;
+                    return d && !isNaN(d.getTime()) && d.getFullYear() === year;
+                });
+                
+                // If specific month is selected, filter by that month too
+                if (selectedMonth !== 'all') {
+                    const mInt = parseInt(selectedMonth);
+                    yearTickets = yearTickets.filter(t => {
+                        const d = t.createdAt ? new Date(t.createdAt) : null;
+                        return d && !isNaN(d.getTime()) && d.getMonth() === mInt;
+                    });
+                }
+                
+                // Calculate metrics
+                const requiredHC = yearTickets.reduce((s, t) => s + (t.requiredHC || 0), 0);
+                const hiredHC = yearTickets.reduce((s, t) => s + (t.hiredCount || 0), 0);
+                const fillRate = requiredHC > 0 ? Math.round((hiredHC / requiredHC) * 100) : 0;
+                
+                const completed = yearTickets.filter(t => t.status === 'Completed');
+                let avgDays = 0;
+                if (completed.length) {
+                    let totalDays = 0;
+                    completed.forEach(t => {
+                        const created = new Date(t.createdAt);
+                        let closedDate = t.updatedAt ? new Date(t.updatedAt) : new Date();
+                        const closedHistory = t.history?.find(h => h.action.includes('Completed') || h.action.includes('Status → Completed'));
+                        if (closedHistory) closedDate = new Date(closedHistory.date);
+                        
+                        const diffTime = Math.abs(closedDate - created);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        totalDays += diffDays;
+                    });
+                    avgDays = Math.round(totalDays / completed.length);
+                }
+                
+                const avgDaysText = avgDays > 0 ? `${avgDays} days` : '—';
+                
+                return `
+                    <div class="compare-year-card glass-card">
+                        <div class="compare-year-title">${year}</div>
+                        <div class="compare-metric-row">
+                            <span class="compare-metric-lbl">Total Hired:</span>
+                            <span class="compare-metric-val" style="color: var(--green); font-weight:800;">${hiredHC}</span>
+                        </div>
+                        <div class="compare-metric-row">
+                            <span class="compare-metric-lbl">Total Required:</span>
+                            <span class="compare-metric-val">${requiredHC}</span>
+                        </div>
+                        <div class="compare-metric-row">
+                            <span class="compare-metric-lbl">Fill Rate:</span>
+                            <span class="compare-metric-val" style="color: var(--accent2);">${fillRate}%</span>
+                        </div>
+                        <div class="compare-metric-row">
+                            <span class="compare-metric-lbl">Avg. Time to Hire:</span>
+                            <span class="compare-metric-val">${avgDaysText}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+    
+    // 4. Draw Comparison Chart
+    const canvas = document.getElementById('chart-comparison');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    if (window.chartComparison) {
+        window.chartComparison.destroy();
+        window.chartComparison = null;
+    }
+    
+    if (selectedYears.length === 0) {
+        return;
+    }
+    
+    const themeColors = getChartThemeColors();
+    const comparisonColors = [
+        { border: 'rgba(108, 99, 255, 1)', bg: 'rgba(108, 99, 255, 0.1)' },   // Indigo
+        { border: 'rgba(236, 72, 153, 1)', bg: 'rgba(236, 72, 153, 0.1)' },   // Pink
+        { border: 'rgba(59, 130, 246, 1)', bg: 'rgba(59, 130, 246, 0.1)' },   // Blue
+        { border: 'rgba(16, 185, 129, 1)', bg: 'rgba(16, 185, 129, 0.1)' },   // Green
+        { border: 'rgba(245, 158, 11, 1)', bg: 'rgba(245, 158, 11, 0.1)' },   // Orange/Amber
+        { border: 'rgba(237, 25, 36, 1)',  bg: 'rgba(237, 25, 36, 0.1)' }     // Red
+    ];
+    
+    let datasets = [];
+    let labels = [];
+    let chartType = 'line';
+    
+    if (selectedMonth === 'all') {
+        // Full year comparison (Line Chart)
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        chartType = 'line';
+        
+        selectedYears.forEach((year, idx) => {
+            const monthlyHires = Array(12).fill(0);
+            filtered.forEach(t => {
+                const d = t.createdAt ? new Date(t.createdAt) : null;
+                if (d && !isNaN(d.getTime()) && d.getFullYear() === year) {
+                    const m = d.getMonth();
+                    monthlyHires[m] += (t.hiredCount || 0);
+                }
+            });
+            
+            const colorInfo = comparisonColors[idx % comparisonColors.length];
+            datasets.push({
+                label: `${year} Hires`,
+                data: monthlyHires,
+                borderColor: colorInfo.border,
+                backgroundColor: colorInfo.bg,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: colorInfo.border,
+                pointHoverRadius: 7,
+                pointRadius: 4
+            });
+        });
+    } else {
+        // Specific month comparison (Bar Chart: Requested vs Hired for each year)
+        labels = selectedYears.map(y => y.toString());
+        chartType = 'bar';
+        const mInt = parseInt(selectedMonth);
+        
+        const requestedData = [];
+        const hiredData = [];
+        
+        selectedYears.forEach(year => {
+            let req = 0;
+            let hir = 0;
+            filtered.forEach(t => {
+                const d = t.createdAt ? new Date(t.createdAt) : null;
+                if (d && !isNaN(d.getTime()) && d.getFullYear() === year && d.getMonth() === mInt) {
+                    req += (t.requiredHC || 0);
+                    hir += (t.hiredCount || 0);
+                }
+            });
+            requestedData.push(req);
+            hiredData.push(hir);
+        });
+        
+        datasets = [
+            {
+                label: 'Requested Headcount',
+                data: requestedData,
+                backgroundColor: 'rgba(237, 25, 36, 0.45)', // Red
+                borderColor: 'var(--accent)',
+                borderWidth: 2,
+                borderRadius: 4
+            },
+            {
+                label: 'Hired Headcount',
+                data: hiredData,
+                backgroundColor: 'rgba(16, 185, 129, 0.45)', // Green
+                borderColor: 'var(--green)',
+                borderWidth: 2,
+                borderRadius: 4
+            }
+        ];
+    }
+    
+    window.chartComparison = new Chart(ctx, {
+        type: chartType,
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 750,
+                easing: 'easeInOutQuart'
+            },
+            plugins: {
+                legend: {
+                    labels: { color: themeColors.labelColor, font: { family: 'Inter', size: 11, weight: '600' } }
+                },
+                tooltip: {
+                    backgroundColor: themeColors.tooltipBg,
+                    titleColor: themeColors.tooltipTitle,
+                    bodyColor: themeColors.tooltipBody,
+                    borderColor: themeColors.tooltipBorder,
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                    boxPadding: 4
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: themeColors.gridColor },
+                    ticks: { color: themeColors.labelColor, font: { family: 'Inter', size: 11 } }
+                },
+                y: {
+                    grid: { color: themeColors.gridColor },
+                    ticks: { color: themeColors.labelColor, stepSize: 1, font: { family: 'Inter', size: 11 } }
+                }
+            }
+        }
+    });
+}
+
 function getTrendData(tickets, period) {
     const dates = {};
     const today = new Date();
@@ -2156,11 +2535,34 @@ function getTrendData(tickets, period) {
             dates[weekKey] = { label: `Wk ${weekNum} (${d.toLocaleDateString('en-IN', { month:'short' })})`, requested: 0, hired: 0 };
         }
     } else if (period === 'monthly') {
-        for (let i = 5; i >= 0; i--) {
-            const d = new Date();
-            d.setMonth(today.getMonth() - i);
-            const monthKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            dates[monthKey] = { label: d.toLocaleDateString('en-IN', { month:'short', year:'2-digit' }), requested: 0, hired: 0 };
+        let minDate = new Date();
+        minDate.setMonth(today.getMonth() - 5); // Default to 6 months ago (including current month)
+        
+        if (tickets && tickets.length > 0) {
+            tickets.forEach(t => {
+                if (t.createdAt) {
+                    const ticketDate = new Date(t.createdAt);
+                    if (!isNaN(ticketDate.getTime()) && ticketDate < minDate) {
+                        minDate = ticketDate;
+                    }
+                }
+            });
+        }
+        
+        // Cap to maximum 24 months to avoid chart clutter
+        const maxLimitDate = new Date();
+        maxLimitDate.setMonth(today.getMonth() - 23);
+        if (minDate < maxLimitDate) {
+            minDate = maxLimitDate;
+        }
+        
+        let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+        const end = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        while (current <= end) {
+            const monthKey = `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}`;
+            dates[monthKey] = { label: current.toLocaleDateString('en-IN', { month:'short', year:'2-digit' }), requested: 0, hired: 0 };
+            current.setMonth(current.getMonth() + 1);
         }
     }
     

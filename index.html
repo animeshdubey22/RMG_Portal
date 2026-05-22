@@ -459,158 +459,261 @@
 
     <!-- ========== PAGE: ANALYTICS ========== -->
     <main id="page-analytics" class="page">
-        <div class="page-header">
+        <div class="page-header" style="margin-bottom: 16px;">
             <div>
                 <h1 class="page-title">Recruitment Analytics & Insights</h1>
                 <p class="page-desc">Track request trends, hiring velocities, and stage statistics across your organization.</p>
             </div>
         </div>
 
-        <!-- KPI Cards Ribbon -->
-        <div class="stats-grid" style="margin-bottom: 24px;">
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="--sc-clr:var(--cyan)">
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div class="stat-data">
-                    <span class="stat-num" id="ana-kpi-fulfillment">0 days</span>
-                    <span class="stat-lbl">Avg. Fulfillment Velocity</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="--sc-clr:var(--green)">
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div class="stat-data">
-                    <span class="stat-num" id="ana-kpi-rate">0%</span>
-                    <span class="stat-lbl">Active Hiring Rate</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="--sc-clr:var(--amber)">
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="2"/></svg>
-                </div>
-                <div class="stat-data">
-                    <span class="stat-num" id="ana-kpi-tickets">0 / 0</span>
-                    <span class="stat-lbl">Completed / Total Requests</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="--sc-clr:var(--purple)">
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M17 11h6m-3-3v6M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </div>
-                <div class="stat-data">
-                    <span class="stat-num" id="ana-kpi-requesters">0</span>
-                    <span class="stat-lbl">Active Requesters</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="--sc-clr:var(--accent2)">
-                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div class="stat-data">
-                    <span class="stat-num" id="ana-kpi-cost">₱0</span>
-                    <span class="stat-lbl">Avg. Cost per Hire</span>
-                </div>
-            </div>
+        <!-- Analytics Sub-navigation Tabs -->
+        <div class="ana-tabs" style="margin-bottom: 24px;">
+            <button type="button" class="ana-tab-btn active" id="btn-ana-standard" onclick="toggleAnalyticsView('standard')">📊 Standard Insights</button>
+            <button type="button" class="ana-tab-btn" id="btn-ana-compare" onclick="toggleAnalyticsView('compare')">🔄 YoY Comparison Portal</button>
         </div>
 
-        <!-- Filters Ribbon -->
-        <div class="filters-bar glass-card" style="margin-bottom: 24px;">
-            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 8px;">📊 Analytics Filters:</div>
-            
-            <select id="ana-filter-dept" onchange="refreshAnalytics()" style="min-width: 180px;">
-                <option value="">All Departments</option>
-            </select>
-            
-            <select id="ana-filter-requester" onchange="refreshAnalytics()" style="min-width: 180px;">
-                <option value="">All Requesters</option>
-            </select>
-
-            <div style="flex: 1;"></div>
-
-            <!-- Download PPT slides button -->
-            <button type="button" class="btn-export" onclick="downloadPPTReport()" title="Download Analytics PowerPoint Presentation" style="background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; font-size: 0.82rem; font-weight: 700; padding: 10px 16px; margin-right: 12px; box-shadow: 0 4px 15px rgba(237,25,36,0.3); display: inline-flex; align-items: center; gap: 6px;">
-                📥 Download PPT Slides
-            </button>
-
-            <!-- Time Period Selector -->
-            <div class="time-period-selector" style="display: flex; background: var(--surface); border: 1px solid var(--border); padding: 4px; border-radius: var(--radius-sm);">
-                <button type="button" class="btn-period active" onclick="setPeriodTrend('daily')">Daily</button>
-                <button type="button" class="btn-period" onclick="setPeriodTrend('weekly')">Weekly</button>
-                <button type="button" class="btn-period" onclick="setPeriodTrend('monthly')">Monthly</button>
-            </div>
-        </div>
-
-        <!-- Chart Panels Grid -->
-        <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; padding: 0 40px; max-width: 1440px; margin: 0 auto; margin-bottom: 40px;">
-            <!-- Main Trend Chart -->
-            <div class="glass-card chart-card-lg">
-                <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                    📈 Headcount Fulfillment Trend
-                    <span id="trend-period-lbl" style="font-size: 0.74rem; background: rgba(108,99,255,.15); color: var(--accent); padding: 2px 8px; border-radius: 12px; text-transform: capitalize;">daily</span>
-                </h3>
-                <div style="flex: 1; position: relative;">
-                    <canvas id="chart-trend"></canvas>
+        <!-- ========== CONTAINER: STANDARD ANALYTICS ========== -->
+        <div id="ana-standard-container">
+            <!-- KPI Cards Ribbon -->
+            <div class="stats-grid" style="margin-bottom: 24px;">
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--cyan)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-fulfillment">0 days</span>
+                        <span class="stat-lbl">Avg. Time to Hire (Velocity)</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Stage Pipeline -->
-            <div class="glass-card chart-card-lg">
-                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">📋 Stage Pipeline Analysis</h3>
-                <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center;">
-                    <canvas id="chart-pipeline"></canvas>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--green)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-rate">0%</span>
+                        <span class="stat-lbl">Fill Rate</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Department Headcount Ratios -->
-            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Department Headcount Fulfillment</h3>
-                <div style="flex: 1; position: relative;">
-                    <canvas id="chart-department"></canvas>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--amber)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" stroke="currentColor" stroke-width="2"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-tickets">0 / 0</span>
+                        <span class="stat-lbl">Completed / Total Requests</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Top Requesters -->
-            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">👑 Top Requesters Analysis</h3>
-                <div style="flex: 1; position: relative;">
-                    <canvas id="chart-requesters"></canvas>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--purple)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M17 11h6m-3-3v6M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-requesters">0</span>
+                        <span class="stat-lbl">Active Requesters</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Sourcing Channel ROI Analysis -->
-            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                    💵 Sourcing Channel ROI Analysis
-                </h3>
-                <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none; flex: 1; display: flex; flex-direction: column;">
-                    <div class="table-scroll" style="flex: 1;">
-                        <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
-                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase;">Channel</th>
-                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: center;">Hires</th>
-                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Total Spend</th>
-                                    <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Cost Per Hire</th>
-                                </tr>
-                            </thead>
-                            <tbody id="roi-table-body">
-                                <!-- Dynamically populated -->
-                            </tbody>
-                        </table>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--accent2)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-cost">₱0</span>
+                        <span class="stat-lbl">Avg. Cost per Hire</span>
+                    </div>
+                </div>
+                <!-- New KPIs -->
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#f59e0b">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-open-age">0 days</span>
+                        <span class="stat-lbl">Avg. Age of Open Requests</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#facc15">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-max-hires">0</span>
+                        <span class="stat-lbl">Highest Hired Positions</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#ec4899">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0V11a2 2 0 012-2h2a2 2 0 012 2v10m-6 0h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-top-dept">—</span>
+                        <span class="stat-lbl">Top Department by Hires</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Cost per Hire by Department -->
-            <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Cost per Hire by Department</h3>
-                <div style="flex: 1; position: relative;">
-                    <canvas id="chart-cost"></canvas>
+            <!-- Filters Ribbon -->
+            <div class="filters-bar glass-card" style="margin-bottom: 24px;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 8px;">📊 Analytics Filters:</div>
+                
+                <select id="ana-filter-dept" onchange="refreshAnalytics()" style="min-width: 180px;">
+                    <option value="">All Departments</option>
+                </select>
+                
+                <select id="ana-filter-requester" onchange="refreshAnalytics()" style="min-width: 180px;">
+                    <option value="">All Requesters</option>
+                </select>
+
+                <!-- Project filter dropdown added -->
+                <select id="ana-filter-project" onchange="refreshAnalytics()" style="min-width: 180px;">
+                    <option value="">All Projects</option>
+                </select>
+
+                <div style="flex: 1;"></div>
+
+                <!-- Download PPT slides button -->
+                <button type="button" class="btn-export" onclick="downloadPPTReport()" title="Download Analytics PowerPoint Presentation" style="background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; font-size: 0.82rem; font-weight: 700; padding: 10px 16px; margin-right: 12px; box-shadow: 0 4px 15px rgba(237,25,36,0.3); display: inline-flex; align-items: center; gap: 6px;">
+                    📥 Download PPT Slides
+                </button>
+
+                <!-- Time Period Selector -->
+                <div class="time-period-selector" style="display: flex; background: var(--surface); border: 1px solid var(--border); padding: 4px; border-radius: var(--radius-sm);">
+                    <button type="button" class="btn-period active" onclick="setPeriodTrend('daily')">Daily</button>
+                    <button type="button" class="btn-period" onclick="setPeriodTrend('weekly')">Weekly</button>
+                    <button type="button" class="btn-period" onclick="setPeriodTrend('monthly')">Monthly</button>
+                </div>
+            </div>
+
+            <!-- Chart Panels Grid -->
+            <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; padding: 0 40px; max-width: 1440px; margin: 0 auto; margin-bottom: 40px;">
+                <!-- Main Trend Chart -->
+                <div class="glass-card chart-card-lg">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                        📈 Headcount Fulfillment Trend
+                        <span id="trend-period-lbl" style="font-size: 0.74rem; background: rgba(108,99,255,.15); color: var(--accent); padding: 2px 8px; border-radius: 12px; text-transform: capitalize;">daily</span>
+                    </h3>
+                    <div style="flex: 1; position: relative;">
+                        <canvas id="chart-trend"></canvas>
+                    </div>
+                </div>
+
+                <!-- Stage Pipeline -->
+                <div class="glass-card chart-card-lg">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">📋 Stage Pipeline Analysis</h3>
+                    <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center;">
+                        <canvas id="chart-pipeline"></canvas>
+                    </div>
+                </div>
+
+                <!-- Department Headcount Ratios -->
+                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Department Headcount Fulfillment</h3>
+                    <div style="flex: 1; position: relative;">
+                        <canvas id="chart-department"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Requesters -->
+                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">👑 Top Requesters Analysis</h3>
+                    <div style="flex: 1; position: relative;">
+                        <canvas id="chart-requesters"></canvas>
+                    </div>
+                </div>
+
+                <!-- Sourcing Channel ROI Analysis -->
+                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                        💵 Sourcing Channel ROI Analysis
+                    </h3>
+                    <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none; flex: 1; display: flex; flex-direction: column;">
+                        <div class="table-scroll" style="flex: 1;">
+                            <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase;">Channel</th>
+                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: center;">Hires</th>
+                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Total Spend</th>
+                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Cost Per Hire</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="roi-table-body">
+                                    <!-- Dynamically populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost per Hire by Department -->
+                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Cost per Hire by Department</h3>
+                    <div style="flex: 1; position: relative;">
+                        <canvas id="chart-cost"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- ========== CONTAINER: YoY COMPARISON PORTAL ========== -->
+        <div id="ana-compare-container" style="display: none;">
+            <!-- Comparison Filters Ribbon -->
+            <div class="filters-bar glass-card" style="margin-bottom: 24px;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 8px;">🔄 Comparison Controls:</div>
+                
+                <!-- Dynamic Years checkboxes -->
+                <div class="compare-years-wrap" id="compare-years-selector">
+                    <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-dim);">Years:</span>
+                    <div id="compare-years-list" style="display: flex; gap: 8px;">
+                        <!-- Dynamically filled with checkboxes -->
+                    </div>
+                </div>
+
+                <div style="width: 1px; height: 24px; background: var(--border); margin: 0 16px;"></div>
+
+                <!-- Month Selector -->
+                <select id="compare-filter-month" onchange="refreshComparison()" style="min-width: 165px;">
+                    <option value="all">Full Year (YoY Trend)</option>
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                </select>
+                
+                <!-- Department Selector -->
+                <select id="compare-filter-dept" onchange="refreshComparison()" style="min-width: 165px;">
+                    <option value="">All Departments</option>
+                </select>
+                
+                <!-- Project Selector -->
+                <select id="compare-filter-project" onchange="refreshComparison()" style="min-width: 165px;">
+                    <option value="">All Projects</option>
+                </select>
+            </div>
+
+            <!-- Dynamic YoY Scorecard Columns -->
+            <div class="compare-grid" id="compare-grid-scorecards">
+                <!-- Dynamically filled with .compare-year-card blocks -->
+            </div>
+
+            <!-- YoY Comparison Chart -->
+            <div style="padding: 0 40px; max-width: 1440px; margin: 0 auto 40px;">
+                <div class="glass-card chart-card-lg" style="height: 400px; display: flex; flex-direction: column;">
+                    <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                        📈 Year-over-Year (YoY) Headcount Hired Comparison
+                    </h3>
+                    <div style="flex: 1; position: relative;">
+                        <canvas id="chart-comparison"></canvas>
+                    </div>
+                </div>
+            </div>
     </main>
 
     <!-- ========== PAGE: UNIFIED AUTH GATE ========== -->
