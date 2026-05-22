@@ -1391,5 +1391,124 @@ body.light-theme .compare-year-card {
     background: rgba(255, 255, 255, 0.7);
 }
 
+/* ===== TICKET JOURNEY & STEPPER (REQUESTER PAGE) ===== */
+.ticket-journey {
+    position: relative;
+    width: 100%;
+    margin: 20px 0 16px 0;
+    padding: 0 5px;
+}
+.journey-progress-line {
+    position: absolute;
+    top: 7px;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 4px;
+    z-index: 1;
+}
+.journey-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    width: 0%;
+    border-radius: 4px;
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+}
+.journey-steps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    z-index: 2;
+}
+.journey-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+    cursor: default;
+}
+.journey-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--surface3);
+    border: 3px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--border);
+    transition: all 0.3s ease;
+    margin-bottom: 6px;
+}
+.journey-step.completed .journey-dot {
+    background: var(--green);
+    border-color: var(--surface);
+    box-shadow: 0 0 0 1px var(--green), 0 0 8px rgba(16, 185, 129, 0.4);
+}
+.journey-step.active .journey-dot {
+    background: var(--accent2);
+    border-color: var(--surface);
+    box-shadow: 0 0 0 1px var(--accent2), 0 0 12px rgba(243, 112, 33, 0.6);
+    transform: scale(1.15);
+}
+.journey-step.active.dropped .journey-dot,
+.journey-step.completed.dropped .journey-dot {
+    background: var(--red);
+    border-color: var(--surface);
+    box-shadow: 0 0 0 1px var(--red), 0 0 12px rgba(239, 68, 68, 0.6);
+}
+.step-label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    text-align: center;
+}
+.journey-step.completed .step-label {
+    color: var(--text-dim);
+    font-weight: 600;
+}
+.journey-step.active .step-label {
+    color: var(--text);
+    font-weight: 700;
+}
+.journey-step.dropped .step-label {
+    color: var(--red) !important;
+}
 
-
+/* ===== TICKET COMMENTS (tc-remarks-box) ===== */
+.tc-remarks-box {
+    margin-top: 14px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    position: relative;
+    transition: var(--transition);
+}
+.ticket-card:hover .tc-remarks-box {
+    background: rgba(255, 255, 255, 0.025);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+body.light-theme .tc-remarks-box {
+    background: rgba(15, 23, 42, 0.015);
+}
+body.light-theme .ticket-card:hover .tc-remarks-box {
+    background: rgba(15, 23, 42, 0.03);
+}
+.remarks-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.remarks-body {
+    color: var(--text);
+    font-style: italic;
+}

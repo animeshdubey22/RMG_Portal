@@ -86,6 +86,14 @@ function loadTickets() {
                 t.assignedRecruiter = 'Unassigned';
                 changed = true;
             }
+            if (t.offeredCount === undefined) {
+                t.offeredCount = t.hiredCount || 0;
+                changed = true;
+            }
+            if (t.acceptedCount === undefined) {
+                t.acceptedCount = t.hiredCount || 0;
+                changed = true;
+            }
         });
         if (changed) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
@@ -232,6 +240,21 @@ function updateUIForUser() {
         const parts = (user.name || '').trim().split(/\s+/);
         const initials = parts.map(p => p.charAt(0)).join('').toUpperCase().substring(0, 2);
         initialsDisplay.textContent = initials || user.email.charAt(0).toUpperCase();
+    }
+
+    // Auto-populate requester name in hiring form and lock it for Requester role
+    const reqNameInput = document.getElementById('req-requested-by');
+    if (reqNameInput) {
+        reqNameInput.value = user.name || '';
+        if (user.role === 'Requester') {
+            reqNameInput.readOnly = true;
+            reqNameInput.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            reqNameInput.style.cursor = 'not-allowed';
+        } else {
+            reqNameInput.readOnly = false;
+            reqNameInput.style.backgroundColor = '';
+            reqNameInput.style.cursor = '';
+        }
     }
 
     // Update Navigation Links Visibility
@@ -536,6 +559,8 @@ function submitRequest(e) {
         status:       'Open',
         stage:        'Sourcing',
         hiredCount:   0,
+        offeredCount: 0,
+        acceptedCount: 0,
         sourcingChannel: 'Other',
         recruitmentCost: 0,
         assignedRecruiter: 'Unassigned',
@@ -550,6 +575,7 @@ function submitRequest(e) {
     saveTickets(tickets);
 
     document.getElementById('hiring-form').reset();
+    updateUIForUser();
     setMinDate();
     renderRequesterTickets();
 
@@ -627,6 +653,14 @@ function renderRequesterTickets() {
             </div>
             <div class="progress-mini">
                 <div class="progress-mini-fill" style="width:${pct}%"></div>
+            </div>
+            ${renderJourneyStepsHTML(t)}
+            <div class="tc-remarks-box">
+                <div class="remarks-header">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2.2;"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Remarks from Hiring Team
+                </div>
+                <div class="remarks-body">${escapeHTML(t.remarks || 'No remarks shared yet.')}</div>
             </div>
         </div>`;
     }).join('');
@@ -846,6 +880,8 @@ function openUpdateModal(ticketId) {
     document.getElementById('upd-status').value = t.status;
     document.getElementById('upd-hired').value = t.hiredCount;
     document.getElementById('upd-hired').max = t.requiredHC;
+    document.getElementById('upd-offered').value = t.offeredCount || 0;
+    document.getElementById('upd-accepted').value = t.acceptedCount || 0;
     populateSourcingChannelSelect(t.sourcingChannel || 'Other');
     document.getElementById('custom-channel-container')?.classList.add('hidden');
     const customInput = document.getElementById('upd-channel-custom');
@@ -925,6 +961,8 @@ function saveUpdate(e) {
     const newStage = document.getElementById('upd-stage').value;
     const newStatus = document.getElementById('upd-status').value;
     const newHired = parseInt(document.getElementById('upd-hired').value, 10) || 0;
+    const newOffered = parseInt(document.getElementById('upd-offered').value, 10) || 0;
+    const newAccepted = parseInt(document.getElementById('upd-accepted').value, 10) || 0;
     const newRemarks = document.getElementById('upd-remarks').value.trim();
     let newChannel = document.getElementById('upd-channel').value;
     const customContainer = document.getElementById('custom-channel-container');
@@ -941,6 +979,8 @@ function saveUpdate(e) {
     if (t.stage !== newStage) changes.push(`Stage → ${newStage}`);
     if (t.status !== newStatus) changes.push(`Status → ${newStatus}`);
     if (t.hiredCount !== newHired) changes.push(`Hired Count → ${newHired}`);
+    if ((t.offeredCount || 0) !== newOffered) changes.push(`Offered Count → ${newOffered}`);
+    if ((t.acceptedCount || 0) !== newAccepted) changes.push(`Accepted Count → ${newAccepted}`);
     if ((t.sourcingChannel || 'Other') !== newChannel) changes.push(`Sourcing Channel → ${newChannel}`);
     if ((t.recruitmentCost || 0) !== newCost) changes.push(`Spend → ₱${newCost.toLocaleString('en-PH')}`);
     if ((t.assignedRecruiter || 'Unassigned') !== newRecruiter) changes.push(`Recruiter → ${newRecruiter || 'Unassigned'}`);
@@ -958,6 +998,8 @@ function saveUpdate(e) {
     t.stage = newStage;
     t.status = newStatus;
     t.hiredCount = newHired;
+    t.offeredCount = newOffered;
+    t.acceptedCount = newAccepted;
     t.sourcingChannel = newChannel;
     t.recruitmentCost = newCost;
     t.assignedRecruiter = newRecruiter || 'Unassigned';
@@ -1171,6 +1213,8 @@ function exportToExcel() {
         'Sourcing Channel': t.sourcingChannel || 'Other',
         'Recruitment Spend (PHP)': t.recruitmentCost || 0,
         'Hired Count':     t.hiredCount,
+        'Offered Count':   t.offeredCount || 0,
+        'Accepted Count':  t.acceptedCount || 0,
         'Pending':         Math.max(0, t.requiredHC - t.hiredCount),
         'Remarks':         t.remarks || '',
         'Last Updated':    t.updatedAt ? fmtDateTime(t.updatedAt) : ''
@@ -1248,6 +1292,59 @@ function fmtDateTime(s) {
         return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
             + ' ' + d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
     } catch { return s; }
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function renderJourneyStepsHTML(t) {
+    const stage = t.stage || 'Sourcing';
+    let activeIndex = 0;
+    const s = stage.toLowerCase();
+    if (s.includes('sourcing')) activeIndex = 0;
+    else if (s.includes('screening')) activeIndex = 1;
+    else if (s.includes('interview')) activeIndex = 2;
+    else if (s.includes('offer')) activeIndex = 3;
+    else if (s.includes('joined') || s.includes('dropped')) activeIndex = 4;
+
+    const isDropped = (s.includes('dropped') || t.status === 'Cancelled');
+
+    return `
+    <div class="ticket-journey">
+        <div class="journey-progress-line">
+            <div class="journey-progress-fill" style="width: ${activeIndex * 25}%"></div>
+        </div>
+        <div class="journey-steps">
+            <div class="journey-step ${activeIndex > 0 ? 'completed' : (activeIndex === 0 ? 'active' : '')}">
+                <div class="journey-dot"></div>
+                <span class="step-label">Sourcing</span>
+            </div>
+            <div class="journey-step ${activeIndex > 1 ? 'completed' : (activeIndex === 1 ? 'active' : '')}">
+                <div class="journey-dot"></div>
+                <span class="step-label">Screening</span>
+            </div>
+            <div class="journey-step ${activeIndex > 2 ? 'completed' : (activeIndex === 2 ? 'active' : '')}">
+                <div class="journey-dot"></div>
+                <span class="step-label">Interview</span>
+            </div>
+            <div class="journey-step ${activeIndex > 3 ? 'completed' : (activeIndex === 3 ? 'active' : '')}">
+                <div class="journey-dot"></div>
+                <span class="step-label">Offer</span>
+            </div>
+            <div class="journey-step ${activeIndex > 4 ? 'completed' : (activeIndex === 4 ? 'active' : '')} ${isDropped ? 'dropped active' : ''}">
+                <div class="journey-dot"></div>
+                <span class="step-label">${isDropped ? 'Dropped' : 'Joined'}</span>
+            </div>
+        </div>
+    </div>
+    `;
 }
 
 function setMinDate() {
@@ -1732,7 +1829,7 @@ function loadPremiumDemoData() {
             updatedAt: subDays(20),
             department: "Technology",
             project: "Cloud Migrate",
-            requestedBy: "Sarah Jenkins",
+            requestedBy: "John Requester",
             hiringReason: "Expansion",
             billable: "Billable",
             reasonDetail: "Migrating legacy infrastructure to AWS cloud requiring specialized cloud engineers.",
@@ -1746,7 +1843,7 @@ function loadPremiumDemoData() {
             recruitmentCost: 25000,
             remarks: "All candidates onboarded and verified. Successfully completed onboarding.",
             history: [
-                { date: subDays(72), action: "Ticket Created", by: "Sarah Jenkins" },
+                { date: subDays(72), action: "Ticket Created", by: "John Requester" },
                 { date: subDays(68), action: "Stage → Sourcing", by: "Hiring Team" },
                 { date: subDays(55), action: "Stage → Interview Scheduled", by: "Hiring Team" },
                 { date: subDays(40), action: "Stage → Offer Rolled Out; Hired Count → 4", by: "Hiring Team" },
@@ -1812,7 +1909,7 @@ function loadPremiumDemoData() {
             updatedAt: subDays(2),
             department: "Technology",
             project: "AI Fraud Detection",
-            requestedBy: "Sarah Jenkins",
+            requestedBy: "John Requester",
             hiringReason: "Expansion",
             billable: "Billable",
             reasonDetail: "Specialized machine learning model engineers for payment fraud prevention systems.",
@@ -1826,7 +1923,7 @@ function loadPremiumDemoData() {
             recruitmentCost: 35000,
             remarks: "2 offers accepted and background check active. 1 position still sourcing.",
             history: [
-                { date: subDays(38), action: "Ticket Created", by: "Sarah Jenkins" },
+                { date: subDays(38), action: "Ticket Created", by: "John Requester" },
                 { date: subDays(35), action: "Stage → Sourcing", by: "Hiring Team" },
                 { date: subDays(20), action: "Stage → Screening", by: "Hiring Team" },
                 { date: subDays(10), action: "Stage → Interview Scheduled", by: "Hiring Team" },
@@ -1940,7 +2037,7 @@ function loadPremiumDemoData() {
             updatedAt: subDays(2),
             department: "Technology",
             project: "iOS App Redesign",
-            requestedBy: "Sarah Jenkins",
+            requestedBy: "John Requester",
             hiringReason: "New Project",
             billable: "Billable",
             reasonDetail: "Senior Swift/iOS developer for core consumer app rewrite.",
@@ -1954,7 +2051,7 @@ function loadPremiumDemoData() {
             recruitmentCost: 0,
             remarks: "Screening resumes from recruiter database.",
             history: [
-                { date: subDays(5), action: "Ticket Created", by: "Sarah Jenkins" },
+                { date: subDays(5), action: "Ticket Created", by: "John Requester" },
                 { date: subDays(2), action: "Stage → Screening", by: "Hiring Team" }
             ]
         },
@@ -1987,7 +2084,7 @@ function loadPremiumDemoData() {
             updatedAt: subDays(5),
             department: "Sales",
             project: "LATAM Markets",
-            requestedBy: "Marcus Brody",
+            requestedBy: "John Requester",
             hiringReason: "Expansion",
             billable: "Billable",
             reasonDetail: "Spanish speaking business development reps.",
@@ -2001,7 +2098,7 @@ function loadPremiumDemoData() {
             recruitmentCost: 40000,
             remarks: "Project postponed by LATAM client due to budget freeze.",
             history: [
-                { date: subDays(30), action: "Ticket Created", by: "Marcus Brody" },
+                { date: subDays(30), action: "Ticket Created", by: "John Requester" },
                 { date: subDays(25), action: "Stage → Sourcing", by: "Hiring Team" },
                 { date: subDays(5), action: "Stage → Dropped; Status → Cancelled", by: "Hiring Team" }
             ]
@@ -2156,6 +2253,8 @@ function importExcelData(e) {
                 const status = row['Status'] || row['status'] || 'Open';
                 const stage = row['Stage'] || row['stage'] || 'Sourcing';
                 const hiredCount = parseInt(row['Hired Count'] || row['hiredCount'] || 0, 10);
+                const offeredCount = parseInt(row['Offered Count'] || row['offeredCount'] || hiredCount, 10);
+                const acceptedCount = parseInt(row['Accepted Count'] || row['acceptedCount'] || hiredCount, 10);
                 const sourcingChannel = row['Sourcing Channel'] || row['sourcingChannel'] || 'Other';
                 saveSourcingChannel(sourcingChannel);
                 const recruitmentCost = parseInt(row['Recruitment Spend (PHP)'] || row['Recruitment Cost (PHP)'] || row['recruitmentCost'] || 0, 10);
@@ -2180,6 +2279,8 @@ function importExcelData(e) {
                     status,
                     stage,
                     hiredCount,
+                    offeredCount,
+                    acceptedCount,
                     sourcingChannel,
                     recruitmentCost,
                     assignedRecruiter,
@@ -2556,6 +2657,24 @@ function refreshAnalytics() {
     const topDeptKpi = document.getElementById('ana-kpi-top-dept');
     if (topDeptKpi) topDeptKpi.textContent = topDeptText;
 
+    // Calculate Offer Acceptance Rate (OAR) and Offer-to-Hire Ratio
+    const totalOffered = filtered.reduce((s, t) => s + (t.offeredCount || 0), 0);
+    const totalAccepted = filtered.reduce((s, t) => s + (t.acceptedCount || 0), 0);
+    
+    const oarVal = totalOffered > 0 ? Math.round((totalAccepted / totalOffered) * 100) : 0;
+    const oarText = `${oarVal}%`;
+    const oarKpi = document.getElementById('ana-kpi-oar');
+    if (oarKpi) oarKpi.textContent = oarText;
+    
+    let othRatioText = '0:0';
+    if (totalHiredHC > 0) {
+        othRatioText = `${(totalOffered / totalHiredHC).toFixed(1)}:1`;
+    } else if (totalOffered > 0) {
+        othRatioText = `${totalOffered}:0`;
+    }
+    const othRatioKpi = document.getElementById('ana-kpi-oth-ratio');
+    if (othRatioKpi) othRatioKpi.textContent = othRatioText;
+
     // Sourcing Channel ROI Table
     const channels = loadSourcingChannels();
     const roiData = channels.map(ch => {
@@ -2634,10 +2753,13 @@ function populateRecruiterPerformanceTracker() {
         const activeCases = recTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
         const completedCases = recTickets.filter(t => t.status === 'Completed').length;
 
-        // Fill rate
+        // Fill rate and yield metrics
         const totalReq = recTickets.reduce((s, t) => s + (t.requiredHC || 0), 0);
+        const totalOffered = recTickets.reduce((s, t) => s + (t.offeredCount || 0), 0);
+        const totalAccepted = recTickets.reduce((s, t) => s + (t.acceptedCount || 0), 0);
         const totalHired = recTickets.reduce((s, t) => s + (t.hiredCount || 0), 0);
         const fillRate = totalReq > 0 ? Math.round((totalHired / totalReq) * 100) : 0;
+        const recOar = totalOffered > 0 ? Math.round((totalAccepted / totalOffered) * 100) : 0;
 
         // Avg. Time to Hire
         const completedList = recTickets.filter(t => t.status === 'Completed');
@@ -2683,6 +2805,11 @@ function populateRecruiterPerformanceTracker() {
                 <td style="padding: 12px 10px; font-weight: 600; color: var(--text-dim);">${recName}</td>
                 <td style="padding: 12px 10px; text-align: center;">${activeCases}</td>
                 <td style="padding: 12px 10px; text-align: center; color: var(--green); font-weight: 700;">${completedCases}</td>
+                <td style="padding: 12px 10px; text-align: center; font-weight: 600;">${totalReq}</td>
+                <td style="padding: 12px 10px; text-align: center;">${totalOffered}</td>
+                <td style="padding: 12px 10px; text-align: center;">${totalAccepted}</td>
+                <td style="padding: 12px 10px; text-align: center; font-weight: 600; color: var(--green);">${totalHired}</td>
+                <td style="padding: 12px 10px; text-align: center; font-weight: 600; color: var(--cyan);">${totalOffered > 0 ? recOar + '%' : '—'}</td>
                 <td style="padding: 12px 10px; text-align: center; font-weight: 600; color: var(--accent2);">${totalReq > 0 ? fillRate + '%' : '—'}</td>
                 <td style="padding: 12px 10px; text-align: center;">${avgTimeText}</td>
                 <td style="padding: 12px 10px;">${oldestText}</td>
@@ -3814,6 +3941,289 @@ function downloadPPTReport() {
         { ...bulletOptions, y: recY + 3.7 }
     );
     
+    // ───── Slide 5: Recruiter Workload & Performance Slide ─────
+    const slide5 = pptx.addSlide();
+    slide5.background = { color: navyBg };
+    slide5.addShape(pptx.ShapeType.rect, { x: 0.0, y: 0.0, w: 13.33, h: 0.06, fill: { color: 'F37021' } });
+    
+    slide5.addText(
+        [
+            { text: 'intele', options: { color: 'FFFFFF', bold: true } },
+            { text: 'gencia', options: { color: 'F37021', bold: true } }
+        ],
+        { x: 11.0, y: 0.4, w: 1.8, h: 0.4, fontSize: 16, fontFace: 'Arial', align: 'right' }
+    );
+    
+    slide5.addText('RECRUITER WORKLOAD & PERFORMANCE', {
+        x: 0.6, y: 0.4, w: 8.0, h: 0.4,
+        fontSize: 22, bold: true, color: 'FFFFFF',
+        fontFace: 'Arial'
+    });
+    
+    slide5.addText('Recruiter active pipelines, headcount fulfillment rates, and offer acceptance ratios', {
+        x: 0.6, y: 0.8, w: 8.0, h: 0.3,
+        fontSize: 11, color: textMuted,
+        fontFace: 'Arial'
+    });
+
+    const activeRecs = new Set();
+    filtered.forEach(t => {
+        if (t.assignedRecruiter && t.assignedRecruiter !== 'Unassigned') {
+            activeRecs.add(t.assignedRecruiter);
+        } else {
+            activeRecs.add('Unassigned');
+        }
+    });
+
+    const recruiterList = Array.from(activeRecs).filter(r => r !== 'Unassigned').sort();
+    if (activeRecs.has('Unassigned')) {
+        recruiterList.push('Unassigned');
+    }
+
+    const recTableHeaderStyle = {
+        fill: 'ED1924',
+        color: 'FFFFFF',
+        fontFace: 'Arial',
+        fontSize: 9,
+        bold: true,
+        align: 'center',
+        valign: 'middle'
+    };
+    
+    const recTableCellStyle = {
+        color: 'FFFFFF',
+        fontFace: 'Arial',
+        fontSize: 8.5,
+        valign: 'middle'
+    };
+    
+    let recTableRows = [
+        [
+            { text: 'Recruiter', options: { ...recTableHeaderStyle, align: 'left' } },
+            { text: 'Active Cases', options: recTableHeaderStyle },
+            { text: 'Completed', options: recTableHeaderStyle },
+            { text: 'Req HC', options: recTableHeaderStyle },
+            { text: 'Offered', options: recTableHeaderStyle },
+            { text: 'Accepted', options: recTableHeaderStyle },
+            { text: 'Hired', options: recTableHeaderStyle },
+            { text: 'OAR', options: recTableHeaderStyle },
+            { text: 'Fill Rate', options: recTableHeaderStyle },
+            { text: 'Avg. Days to Hire', options: recTableHeaderStyle }
+        ]
+    ];
+    
+    recruiterList.forEach(recName => {
+        const isUnassigned = recName === 'Unassigned';
+        const recTickets = filtered.filter(t => {
+            if (isUnassigned) {
+                return !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned';
+            } else {
+                return t.assignedRecruiter === recName;
+            }
+        });
+        
+        const activeCases = recTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+        const completedCases = recTickets.filter(t => t.status === 'Completed').length;
+        const totalReq = recTickets.reduce((s, t) => s + (t.requiredHC || 0), 0);
+        const totalOffered = recTickets.reduce((s, t) => s + (t.offeredCount || 0), 0);
+        const totalAccepted = recTickets.reduce((s, t) => s + (t.acceptedCount || 0), 0);
+        const totalHired = recTickets.reduce((s, t) => s + (t.hiredCount || 0), 0);
+        
+        const fillRate = totalReq > 0 ? Math.round((totalHired / totalReq) * 100) : 0;
+        const recOar = totalOffered > 0 ? Math.round((totalAccepted / totalOffered) * 100) : 0;
+        
+        const completedList = recTickets.filter(t => t.status === 'Completed');
+        let avgDaysText = '—';
+        if (completedList.length) {
+            let totalDays = 0;
+            completedList.forEach(t => {
+                const created = new Date(t.createdAt);
+                let closedDate = t.updatedAt ? new Date(t.updatedAt) : new Date();
+                const closedHistory = t.history?.find(h => h.action.includes('Completed') || h.action.includes('Status → Completed'));
+                if (closedHistory) closedDate = new Date(closedHistory.date);
+                const diffDays = Math.ceil(Math.abs(closedDate - created) / (1000 * 60 * 60 * 24));
+                totalDays += diffDays;
+            });
+            avgDaysText = `${Math.round(totalDays / completedList.length)} days`;
+        }
+        
+        recTableRows.push([
+            { text: recName, options: { ...recTableCellStyle, align: 'left', bold: true } },
+            { text: activeCases.toString(), options: { ...recTableCellStyle, align: 'center' } },
+            { text: completedCases.toString(), options: { ...recTableCellStyle, align: 'center', color: '10B981' } },
+            { text: totalReq.toString(), options: { ...recTableCellStyle, align: 'center' } },
+            { text: totalOffered.toString(), options: { ...recTableCellStyle, align: 'center' } },
+            { text: totalAccepted.toString(), options: { ...recTableCellStyle, align: 'center' } },
+            { text: totalHired.toString(), options: { ...recTableCellStyle, align: 'center', bold: true, color: '10B981' } },
+            { text: totalOffered > 0 ? `${recOar}%` : '—', options: { ...recTableCellStyle, align: 'center', bold: true, color: '3B82F6' } },
+            { text: totalReq > 0 ? `${fillRate}%` : '—', options: { ...recTableCellStyle, align: 'center', bold: true, color: 'F37021' } },
+            { text: avgDaysText, options: { ...recTableCellStyle, align: 'center' } }
+        ]);
+    });
+    
+    slide5.addTable(recTableRows, {
+        x: 0.6, y: 1.4, w: 12.13,
+        colWidths: [2.3, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 1.73],
+        border: { pt: '1', color: '374151' }
+    });
+
+    let topRecName = 'N/A';
+    let maxHires = 0;
+    recruiterList.forEach(recName => {
+        if (recName === 'Unassigned') return;
+        const recTickets = filtered.filter(t => t.assignedRecruiter === recName);
+        const hires = recTickets.reduce((s, t) => s + (t.hiredCount || 0), 0);
+        if (hires > maxHires) {
+            maxHires = hires;
+            topRecName = recName;
+        }
+    });
+
+    const recInsightY = 5.4;
+    slide5.addShape(pptx.ShapeType.rect, {
+        x: 0.6, y: recInsightY, w: 12.13, h: 1.35,
+        fill: { color: '111827' },
+        line: { color: '2A3547', width: 1 }
+    });
+    
+    slide5.addText('💡 Recruiter Performance Insights', {
+        x: 0.8, y: recInsightY + 0.1, w: 11.7, h: 0.3,
+        fontSize: 11, bold: true, color: 'ED1924', fontFace: 'Arial'
+    });
+    
+    const topRecTxt = maxHires > 0 ? `${topRecName} leads the team with ${maxHires} successful hires.` : 'No recruiter hires registered yet.';
+    slide5.addText(`${topRecTxt} Workload Balance: Recruiters with high active pipelines should be supported to prevent delays in fulfillment velocity. Action: Review unassigned requests and balance the caseload to optimize average time-to-hire.`, {
+        x: 0.8, y: recInsightY + 0.4, w: 11.7, h: 0.8,
+        fontSize: 9.5, color: 'E2E8F0', fontFace: 'Arial', lineSpacing: 14
+    });
+
+    // ───── Slide 6: Sourcing & Conversion Funnel Slide ─────
+    const slide6 = pptx.addSlide();
+    slide6.background = { color: navyBg };
+    slide6.addShape(pptx.ShapeType.rect, { x: 0.0, y: 0.0, w: 13.33, h: 0.06, fill: { color: 'F37021' } });
+    
+    slide6.addText(
+        [
+            { text: 'intele', options: { color: 'FFFFFF', bold: true } },
+            { text: 'gencia', options: { color: 'F37021', bold: true } }
+        ],
+        { x: 11.0, y: 0.4, w: 1.8, h: 0.4, fontSize: 16, fontFace: 'Arial', align: 'right' }
+    );
+    
+    slide6.addText('RECRUITMENT CONVERSION FUNNEL', {
+        x: 0.6, y: 0.4, w: 8.0, h: 0.4,
+        fontSize: 22, bold: true, color: 'FFFFFF',
+        fontFace: 'Arial'
+    });
+    
+    slide6.addText('Overall conversion yields from headcount requirements through candidate placement stages', {
+        x: 0.6, y: 0.8, w: 8.0, h: 0.3,
+        fontSize: 11, color: textMuted,
+        fontFace: 'Arial'
+    });
+
+    const totalOfferedAll = filtered.reduce((s, t) => s + (t.offeredCount || 0), 0);
+    const totalAcceptedAll = filtered.reduce((s, t) => s + (t.acceptedCount || 0), 0);
+    const totalHiredAll = hiredHC;
+    const totalReqAll = requiredHC;
+    
+    const funnelOar = totalOfferedAll > 0 ? Math.round((totalAcceptedAll / totalOfferedAll) * 100) : 0;
+    const funnelJoinRate = totalAcceptedAll > 0 ? Math.round((totalHiredAll / totalAcceptedAll) * 100) : 0;
+    const funnelOthConv = totalOfferedAll > 0 ? Math.round((totalHiredAll / totalOfferedAll) * 100) : 0;
+    const funnelFillRate = totalReqAll > 0 ? Math.round((totalHiredAll / totalReqAll) * 100) : 0;
+
+    const stageY = 1.9;
+    const stageH = 2.8;
+    const stageW = 2.2;
+    
+    const stages = [
+        { title: 'REQUIRED HC', val: totalReqAll.toString(), desc: 'Headcount requested in tickets', border: '3B82F6', textCol: '3B82F6', x: 1.05 },
+        { title: 'OFFERED', val: totalOfferedAll.toString(), desc: 'Candidate offers extended', border: 'F59E0B', textCol: 'F59E0B', x: 4.05 },
+        { title: 'ACCEPTED', val: totalAcceptedAll.toString(), desc: 'Candidate offers accepted', border: '10B981', textCol: '10B981', x: 7.05 },
+        { title: 'HIRED / JOINED', val: totalHiredAll.toString(), desc: 'Successfully onboarded hires', border: 'ED1924', textCol: 'ED1924', x: 10.05 }
+    ];
+
+    stages.forEach((s, idx) => {
+        slide6.addShape(pptx.ShapeType.rect, {
+            x: s.x, y: stageY, w: stageW, h: stageH,
+            fill: { color: '111827' },
+            line: { color: s.border, width: 2 }
+        });
+
+        slide6.addText(s.title, {
+            x: s.x + 0.1, y: stageY + 0.2, w: stageW - 0.2, h: 0.3,
+            fontSize: 10, bold: true, color: '94A3B8',
+            fontFace: 'Arial', align: 'center'
+        });
+
+        slide6.addText(s.val, {
+            x: s.x + 0.1, y: stageY + 0.6, w: stageW - 0.2, h: 1.0,
+            fontSize: 44, bold: true, color: s.textCol,
+            fontFace: 'Arial', align: 'center'
+        });
+
+        slide6.addText(s.desc, {
+            x: s.x + 0.1, y: stageY + 1.7, w: stageW - 0.2, h: 0.8,
+            fontSize: 9.5, color: 'E2E8F0',
+            fontFace: 'Arial', align: 'center', lineSpacing: 13
+        });
+    });
+
+    const arrowY = stageY + 1.1;
+    const arrowH = 0.5;
+    const arrowW = 0.6;
+    const arrowColor = '4B5563';
+
+    slide6.addShape(pptx.ShapeType.rightArrow, {
+        x: 3.35, y: arrowY, w: arrowW, h: arrowH,
+        fill: { color: arrowColor }, line: { color: '374151', width: 1 }
+    });
+    slide6.addText('Sourcing &\nScreening', {
+        x: 3.2, y: stageY + 0.4, w: 0.9, h: 0.6,
+        fontSize: 8, color: '94A3B8', fontFace: 'Arial', align: 'center'
+    });
+
+    slide6.addShape(pptx.ShapeType.rightArrow, {
+        x: 6.35, y: arrowY, w: arrowW, h: arrowH,
+        fill: { color: 'ED1924' }, line: { color: 'F37021', width: 1 }
+    });
+    slide6.addText(`${funnelOar}% OAR`, {
+        x: 6.1, y: stageY + 0.5, w: 1.1, h: 0.4,
+        fontSize: 9.5, bold: true, color: 'FFFFFF', fontFace: 'Arial', align: 'center'
+    });
+
+    slide6.addShape(pptx.ShapeType.rightArrow, {
+        x: 9.35, y: arrowY, w: arrowW, h: arrowH,
+        fill: { color: '10B981' }, line: { color: '059669', width: 1 }
+    });
+    slide6.addText(`${funnelJoinRate}% Join`, {
+        x: 9.1, y: stageY + 0.5, w: 1.1, h: 0.4,
+        fontSize: 9.5, bold: true, color: 'FFFFFF', fontFace: 'Arial', align: 'center'
+    });
+
+    const funnelInsightY = 5.25;
+    slide6.addShape(pptx.ShapeType.rect, {
+        x: 1.05, y: funnelInsightY, w: 11.2, h: 1.5,
+        fill: { color: '111827' },
+        line: { color: '2A3547', width: 1 }
+    });
+    
+    slide6.addText('🎯 Sourcing Yield & Funnel Efficiency Insights', {
+        x: 1.25, y: funnelInsightY + 0.15, w: 10.8, h: 0.3,
+        fontSize: 11, bold: true, color: 'ED1924', fontFace: 'Arial'
+    });
+
+    const oarStatus = funnelOar >= 80 ? 'healthy' : 'sub-optimal';
+    const fillStatus = funnelFillRate >= 80 ? 'excellent' : 'in progress';
+    const insightText = `• Offer Acceptance Rate (OAR) stands at ${funnelOar}%, which indicates a ${oarStatus} conversion from offer to acceptance.
+• Offer-to-Hire Conversion (OTH) is ${funnelOthConv}% with a Joining Rate of ${funnelJoinRate}% from offer acceptance.
+• Overall Req-to-Hired Fulfillment (Fill Rate) is currently at ${funnelFillRate}%. ${funnelFillRate < 80 ? 'Action: Accelerate sourcing and screening activities to convert remaining open positions.' : 'Outstanding achievement in meeting the talent acquisition objectives.'}`;
+    
+    slide6.addText(insightText, {
+        x: 1.25, y: funnelInsightY + 0.45, w: 10.8, h: 0.9,
+        fontSize: 9.5, color: 'E2E8F0', fontFace: 'Arial', lineSpacing: 14
+    });
+
     // ───── Save File ─────
     const scopeStr = deptF ? `_${deptF.replace(/\s+/g, '')}` : '_AllDepts';
     const dateStr = new Date().toISOString().slice(0, 10);

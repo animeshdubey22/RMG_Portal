@@ -552,12 +552,21 @@
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon-wrap" style="--sc-clr:#ec4899">
-                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0V11a2 2 0 012-2h2a2 2 0 012 2v10m-6 0h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div class="stat-icon-wrap" style="--sc-clr:#10B981">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                     <div class="stat-data">
-                        <span class="stat-num" id="ana-kpi-top-dept">—</span>
-                        <span class="stat-lbl">Top Department by Hires</span>
+                        <span class="stat-num" id="ana-kpi-oar">0%</span>
+                        <span class="stat-lbl">Offer Acceptance Rate</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#6366F1">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-oth-ratio">1:1</span>
+                        <span class="stat-lbl">Offer-to-Hire Ratio</span>
                     </div>
                 </div>
             </div>
@@ -682,6 +691,11 @@
                                     <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Recruiter</th>
                                     <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Active Cases</th>
                                     <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Completed Cases</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Required HC</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Offered</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Accepted</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Hired</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">OAR</th>
                                     <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Fill Rate</th>
                                     <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Avg. Time to Hire</th>
                                     <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Oldest Pending Case</th>
@@ -978,6 +992,14 @@
                     <div class="form-group">
                         <label for="upd-hired">Hired Count</label>
                         <input type="number" id="upd-hired" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="upd-offered">Offered Count</label>
+                        <input type="number" id="upd-offered" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="upd-accepted">Accepted Count</label>
+                        <input type="number" id="upd-accepted" min="0" value="0">
                     </div>
                     <div class="form-group" id="upd-recruiter-group">
                         <label for="upd-recruiter">Assigned Recruiter</label>
