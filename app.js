@@ -8,6 +8,7 @@ const STORAGE_KEY = 'rmg_hire_tickets';
 const SOURCING_CHANNELS_KEY = 'rmg_sourcing_channels';
 let currentEditId = null;
 let lastCreatedTicketId = null;
+let scopeInitialized = false;
 
 const DEFAULT_CHANNELS = [
     'LinkedIn',
@@ -274,6 +275,16 @@ function updateUIForUser() {
     if (clearDbBtn) {
         clearDbBtn.style.display = isHr ? '' : 'none';
     }
+
+    // Set default dashboard scope based on role on first load or login
+    if (!scopeInitialized) {
+        if (isRecruiter) {
+            changeHiringScope('my');
+        } else {
+            changeHiringScope('all');
+        }
+        scopeInitialized = true;
+    }
 }
 
 function navigate(page) {
@@ -447,7 +458,15 @@ function updateClock() {
 
 // ───── Hero Stats ─────
 function updateHeroStats() {
-    const tickets = loadTickets();
+    let tickets = loadTickets();
+    const user = getActiveUser();
+    if (user) {
+        if (user.role === 'Requester') {
+            tickets = tickets.filter(t => t.requestedBy.toLowerCase() === user.name.toLowerCase());
+        } else if (user.role === 'Recruiter') {
+            tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+        }
+    }
     const totalHired = tickets.reduce((s, t) => s + (t.hiredCount || 0), 0);
     const totalRequired = tickets.reduce((s, t) => s + (t.requiredHC || 0), 0);
     const inProg = tickets.filter(t => t.status === 'In Progress').length;
@@ -464,7 +483,16 @@ function renderRecentActivity() {
     const section = document.getElementById('recent-section');
     if (!container || !section) return;
 
-    const tickets = loadTickets().slice(0, 6);
+    let tickets = loadTickets();
+    const user = getActiveUser();
+    if (user) {
+        if (user.role === 'Requester') {
+            tickets = tickets.filter(t => t.requestedBy.toLowerCase() === user.name.toLowerCase());
+        } else if (user.role === 'Recruiter') {
+            tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+        }
+    }
+    tickets = tickets.slice(0, 6);
     if (!tickets.length) {
         section.style.display = 'none';
         return;
@@ -558,7 +586,12 @@ function renderRequesterTickets() {
     if (!container) return;
 
     const search = (document.getElementById('requester-search')?.value || '').toLowerCase();
+    const user = getActiveUser();
+    const userRole = getActiveUserRole();
     const tickets = loadTickets().filter(t => {
+        if (userRole === 'Requester' && user) {
+            if (t.requestedBy.toLowerCase() !== user.name.toLowerCase()) return false;
+        }
         if (!search) return true;
         return t.ticketId.toLowerCase().includes(search)
             || t.department.toLowerCase().includes(search)
@@ -649,10 +682,20 @@ function renderHiringTickets() {
     // Scope Filter
     const user = getActiveUser();
     if (user) {
-        if (currentHiringScope === 'my') {
-            tickets = tickets.filter(t => t.assignedRecruiter === user.name);
-        } else if (currentHiringScope === 'new') {
-            tickets = tickets.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+        if (user.role === 'Recruiter') {
+            if (currentHiringScope === 'my') {
+                tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+            } else if (currentHiringScope === 'new') {
+                tickets = tickets.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+            } else { // 'all' scope for Recruiter: my + unassigned
+                tickets = tickets.filter(t => t.assignedRecruiter === user.name || !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+            }
+        } else {
+            if (currentHiringScope === 'my') {
+                tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+            } else if (currentHiringScope === 'new') {
+                tickets = tickets.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+            }
         }
     }
 
@@ -714,12 +757,33 @@ function renderHiringTickets() {
         </tr>`;
     }).join('');
 
-    updateDashboardStats();
+    updateDashboardStats(tickets);
 }
 
 // ───── Dashboard Stats ─────
-function updateDashboardStats() {
-    const tickets = loadTickets();
+function updateDashboardStats(filteredTickets) {
+    let tickets = filteredTickets;
+    if (!tickets) {
+        tickets = loadTickets();
+        const user = getActiveUser();
+        if (user) {
+            if (user.role === 'Recruiter') {
+                if (currentHiringScope === 'my') {
+                    tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+                } else if (currentHiringScope === 'new') {
+                    tickets = tickets.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+                } else { // 'all' scope for Recruiter: my + unassigned
+                    tickets = tickets.filter(t => t.assignedRecruiter === user.name || !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+                }
+            } else {
+                if (currentHiringScope === 'my') {
+                    tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+                } else if (currentHiringScope === 'new') {
+                    tickets = tickets.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+                }
+            }
+        }
+    }
     const open = tickets.filter(t => t.status === 'Open').length;
     const inProg = tickets.filter(t => t.status === 'In Progress').length;
     const comp = tickets.filter(t => t.status === 'Completed').length;
@@ -792,29 +856,19 @@ function openUpdateModal(ticketId) {
     // Populate Recruiter select dropdown
     const recSel = document.getElementById('upd-recruiter');
     if (recSel) {
-        const currentUser = getActiveUser();
         const ticketRecruiter = t.assignedRecruiter || 'Unassigned';
+        const allUsers = loadUsers();
+        // Allow allocating to themselves or any other recruiter / admin (team members)
+        const teamMembers = [...new Set(allUsers.filter(u => u.role === 'Recruiter' || u.role === 'HR Team / Admin').map(u => u.name).filter(Boolean))].sort();
         
-        if (currentUser && currentUser.role === 'Recruiter') {
-            const options = new Set(['Unassigned', currentUser.name]);
-            if (ticketRecruiter && ticketRecruiter !== 'Unassigned') {
-                options.add(ticketRecruiter);
-            }
-            recSel.innerHTML = Array.from(options).map(name => 
-                `<option value="${name === 'Unassigned' ? '' : name}" ${ticketRecruiter === name ? 'selected' : ''}>${name}</option>`
-            ).join('');
-        } else {
-            const allUsers = loadUsers();
-            const recruiters = [...new Set(allUsers.filter(u => u.role === 'Recruiter').map(u => u.name).filter(Boolean))].sort();
-            let optionsHtml = `<option value="">Unassigned</option>`;
-            if (ticketRecruiter && ticketRecruiter !== 'Unassigned' && !recruiters.includes(ticketRecruiter)) {
-                optionsHtml += `<option value="${ticketRecruiter}" selected>${ticketRecruiter}</option>`;
-            }
-            optionsHtml += recruiters.map(name => 
-                `<option value="${name}" ${ticketRecruiter === name ? 'selected' : ''}>${name}</option>`
-            ).join('');
-            recSel.innerHTML = optionsHtml;
+        let optionsHtml = `<option value="">Unassigned</option>`;
+        if (ticketRecruiter && ticketRecruiter !== 'Unassigned' && !teamMembers.includes(ticketRecruiter)) {
+            optionsHtml += `<option value="${ticketRecruiter}" selected>${ticketRecruiter}</option>`;
         }
+        optionsHtml += teamMembers.map(name => 
+            `<option value="${name}" ${ticketRecruiter === name ? 'selected' : ''}>${name}</option>`
+        ).join('');
+        recSel.innerHTML = optionsHtml;
     }
 
     // Show/hide delete button based on user role (Admin only)
@@ -921,6 +975,19 @@ function showTicketDetail(ticketId) {
     const t = loadTickets().find(x => x.ticketId === ticketId);
     if (!t) return;
 
+    const activeUser = getActiveUser();
+    const userRole = getActiveUserRole();
+    // Block Requester from viewing other users' tickets
+    if (userRole === 'Requester' && activeUser && t.requestedBy.toLowerCase() !== activeUser.name.toLowerCase()) {
+        showToast('Unauthorized', 'You are not authorized to view this ticket.');
+        return;
+    }
+    // Block Recruiter from viewing tickets assigned to other recruiters
+    if (userRole === 'Recruiter' && activeUser && t.assignedRecruiter && t.assignedRecruiter !== 'Unassigned' && t.assignedRecruiter !== activeUser.name) {
+        showToast('Unauthorized', 'You are not authorized to view this ticket.');
+        return;
+    }
+
     const pending = Math.max(0, t.requiredHC - t.hiredCount);
     const pct = Math.min(100, Math.round((t.hiredCount / t.requiredHC) * 100));
 
@@ -967,7 +1034,6 @@ function showTicketDetail(ticketId) {
         html += '</div>';
     }
 
-    const userRole = getActiveUserRole();
     if (userRole === 'HR Team / Admin' || userRole === 'Recruiter') {
         html += `<div style="margin-top: 18px; padding: 14px; border: 1px dashed rgba(108,99,255,0.3); border-radius: var(--radius-sm); background: rgba(108,99,255,0.03);">
             <div style="color: var(--accent); margin-bottom: 8px; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
@@ -997,7 +1063,12 @@ function lookupTicket() {
     if (!result) return;
     if (!input) { result.classList.add('hidden'); return; }
 
-    const t = loadTickets().find(x => x.ticketId === input);
+    let t = loadTickets().find(x => x.ticketId === input);
+    const activeUser = getActiveUser();
+    const userRole = getActiveUserRole();
+    if (t && userRole === 'Requester' && activeUser && t.requestedBy.toLowerCase() !== activeUser.name.toLowerCase()) {
+        t = null; // Treat as not found for requesters searching other users' tickets
+    }
     if (!t) {
         result.classList.remove('hidden');
         result.innerHTML = `
@@ -1280,6 +1351,7 @@ function submitLogin(e) {
             role: matchedUser.role
         };
         sessionStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(sessionUser));
+        scopeInitialized = false;
         
         // Reset form
         document.getElementById('auth-login-form').reset();
@@ -1359,6 +1431,8 @@ function submitSignup(e) {
 
 function logout() {
     sessionStorage.removeItem(ACTIVE_USER_KEY);
+    scopeInitialized = false;
+    currentHiringScope = 'all';
     showToast('Signed Out', 'You have successfully signed out.');
     navigate('auth');
 }
@@ -2513,6 +2587,108 @@ function refreshAnalytics() {
     drawDepartmentChart(filtered);
     drawRequestersChart(filtered);
     drawCostChart(filtered);
+    populateRecruiterPerformanceTracker();
+}
+
+function populateRecruiterPerformanceTracker() {
+    const section = document.getElementById('admin-recruiter-tracker-section');
+    const tbody = document.getElementById('recruiter-tracker-table-body');
+    if (!section || !tbody) return;
+
+    const user = getActiveUser();
+    if (!user || user.role !== 'HR Team / Admin') {
+        section.style.display = 'none';
+        return;
+    }
+
+    // Show section
+    section.style.display = 'block';
+
+    const allTickets = loadTickets();
+    const allUsers = loadUsers();
+
+    // Collect all recruiter names
+    const recruitersSet = new Set(allUsers.filter(u => u.role === 'Recruiter').map(u => u.name).filter(Boolean));
+    allTickets.forEach(t => {
+        if (t.assignedRecruiter && t.assignedRecruiter !== 'Unassigned') {
+            recruitersSet.add(t.assignedRecruiter);
+        }
+    });
+
+    const recruiterList = Array.from(recruitersSet).sort();
+    // Add "Unassigned" to list
+    recruiterList.push('Unassigned');
+
+    const today = new Date();
+
+    tbody.innerHTML = recruiterList.map(recName => {
+        const isUnassigned = recName === 'Unassigned';
+        const recTickets = allTickets.filter(t => {
+            if (isUnassigned) {
+                return !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned';
+            } else {
+                return t.assignedRecruiter === recName;
+            }
+        });
+
+        const activeCases = recTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+        const completedCases = recTickets.filter(t => t.status === 'Completed').length;
+
+        // Fill rate
+        const totalReq = recTickets.reduce((s, t) => s + (t.requiredHC || 0), 0);
+        const totalHired = recTickets.reduce((s, t) => s + (t.hiredCount || 0), 0);
+        const fillRate = totalReq > 0 ? Math.round((totalHired / totalReq) * 100) : 0;
+
+        // Avg. Time to Hire
+        const completedList = recTickets.filter(t => t.status === 'Completed');
+        let avgTimeText = '—';
+        if (completedList.length) {
+            let totalDays = 0;
+            completedList.forEach(t => {
+                const created = new Date(t.createdAt);
+                let closedDate = t.updatedAt ? new Date(t.updatedAt) : new Date();
+                const closedHistory = t.history?.find(h => h.action.includes('Completed') || h.action.includes('Status → Completed'));
+                if (closedHistory) closedDate = new Date(closedHistory.date);
+                
+                const diffTime = Math.abs(closedDate - created);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                totalDays += diffDays;
+            });
+            avgTimeText = `${Math.round(totalDays / completedList.length)} days`;
+        }
+
+        // Oldest pending case
+        const activeList = recTickets.filter(t => t.status === 'Open' || t.status === 'In Progress');
+        let oldestText = '<span style="color:var(--text-muted)">—</span>';
+        if (activeList.length) {
+            let oldestTicket = null;
+            let oldestTime = Infinity;
+
+            activeList.forEach(t => {
+                const createdTime = new Date(t.createdAt).getTime();
+                if (createdTime < oldestTime) {
+                    oldestTime = createdTime;
+                    oldestTicket = t;
+                }
+            });
+
+            if (oldestTicket) {
+                const ageDays = Math.floor((today - new Date(oldestTicket.createdAt)) / (1000 * 60 * 60 * 24));
+                oldestText = `<strong style="color:var(--accent); cursor:pointer;" onclick="showTicketDetail('${oldestTicket.ticketId}')">${oldestTicket.ticketId}</strong> <span style="color:var(--text-muted);font-size:0.8rem">(${ageDays}d old)</span>`;
+            }
+        }
+
+        return `
+            <tr style="border-bottom: 1px solid var(--border)">
+                <td style="padding: 12px 10px; font-weight: 600; color: var(--text-dim);">${recName}</td>
+                <td style="padding: 12px 10px; text-align: center;">${activeCases}</td>
+                <td style="padding: 12px 10px; text-align: center; color: var(--green); font-weight: 700;">${completedCases}</td>
+                <td style="padding: 12px 10px; text-align: center; font-weight: 600; color: var(--accent2);">${totalReq > 0 ? fillRate + '%' : '—'}</td>
+                <td style="padding: 12px 10px; text-align: center;">${avgTimeText}</td>
+                <td style="padding: 12px 10px;">${oldestText}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function toggleAnalyticsView(view) {

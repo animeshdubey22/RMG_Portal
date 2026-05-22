@@ -667,6 +667,33 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Recruiter Workload and Performance Table (Admin only) -->
+            <div id="admin-recruiter-tracker-section" class="glass-card" style="margin: 24px 40px 40px; padding: 24px; max-width: 1360px; display: none;">
+                <h3 style="margin-bottom: 18px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                    👥 Recruiter Workload & Performance Tracker
+                </h3>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">This dashboard tracks active requisitions, closed cases, time-to-hire velocities, and the oldest pending case for each recruiter in real-time.</p>
+                <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none;">
+                    <div class="table-scroll">
+                        <table style="width:100%; border-collapse:collapse; font-size:.88rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Recruiter</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Active Cases</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Completed Cases</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Fill Rate</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Avg. Time to Hire</th>
+                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Oldest Pending Case</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recruiter-tracker-table-body">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ========== CONTAINER: YoY COMPARISON PORTAL ========== -->
