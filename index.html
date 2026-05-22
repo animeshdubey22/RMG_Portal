@@ -65,6 +65,25 @@
                 </button>
             </div>
             <div class="nav-right">
+                <!-- Notification Bell -->
+                <div class="nav-notification-container" id="nav-notifications" style="position: relative; margin-right: 14px;">
+                    <button class="btn-notification" onclick="toggleNotificationsDropdown(event)" title="Notifications" style="position: relative; background: none; border: none; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 8px;">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width: 2;">
+                            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="notification-badge hidden" id="notification-badge-count" style="position: absolute; top: 0; right: 0; background: var(--accent); color: #fff; font-size: 0.62rem; font-weight: 700; border-radius: 50%; min-width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; padding: 2px; line-height: 1;">0</span>
+                    </button>
+                    <div class="notifications-dropdown hidden" id="notifications-dropdown" style="position: absolute; top: 40px; right: 0; width: 320px; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 1000; display: flex; flex-direction: column; max-height: 400px; overflow: hidden; backdrop-filter: blur(10px);">
+                        <div class="notifications-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+                            <span style="font-weight: 700; font-size: 0.82rem; color: var(--text);">Notifications</span>
+                            <button onclick="clearAllNotifications(event)" style="background: none; border: none; color: var(--accent); font-size: 0.72rem; cursor: pointer; font-weight: 600;">Clear All</button>
+                        </div>
+                        <div class="notifications-list" id="notifications-list" style="overflow-y: auto; flex: 1; max-height: 320px; display: flex; flex-direction: column;">
+                            <div class="no-notifications" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.8rem;">No new notifications</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- User Profile Badge -->
                 <div class="nav-user-profile" id="nav-user-profile">
                     <div class="user-avatar" id="user-avatar-initials">U</div>
@@ -288,6 +307,14 @@
             </div>
         </div>
 
+        <!-- Hiring Dashboard Main Tabs -->
+        <div class="ana-tabs" id="hiring-main-tabs" style="margin: 0 40px 20px; max-width: 1360px; padding: 0; display: none;">
+            <button type="button" class="ana-tab-btn active" id="btn-hiring-tab-requisitions" onclick="switchHiringTab('requisitions')">📋 Requisitions Management</button>
+            <button type="button" class="ana-tab-btn" id="btn-hiring-tab-dashboard" onclick="switchHiringTab('dashboard')">📊 Recruiter Dashboard</button>
+        </div>
+
+        <div id="hiring-requisitions-view">
+
         <!-- Stats -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -498,7 +525,7 @@
                     </div>
 
                     <!-- Add Candidate Toggle Button -->
-                    <button class="btn-primary btn-block" style="font-size: 0.78rem; padding: 8px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="toggleCandidateForm(true)">
+                    <button id="btn-add-candidate-toggle" class="btn-primary btn-block" style="font-size: 0.78rem; padding: 8px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="toggleCandidateForm(true)">
                         <span>➕</span> Add Candidate Record
                     </button>
 
@@ -506,66 +533,178 @@
                     <form id="candidate-form" class="hidden" onsubmit="saveCandidate(event)" style="background: rgba(255,255,255,0.015); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;">
                         <input type="hidden" id="cand-form-id">
                         
+                        <!-- Row 1: Name -->
                         <div style="display: flex; gap: 6px;">
                             <div style="flex: 1;">
                                 <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">First Name *</label>
-                                <input type="text" id="cand-first-name" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                                <input type="text" id="cand-first-name" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
                             </div>
                             <div style="flex: 1;">
                                 <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Last Name *</label>
-                                <input type="text" id="cand-last-name" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                                <input type="text" id="cand-last-name" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
                             </div>
                         </div>
 
+                        <!-- Row 2: Gender & Source -->
                         <div style="display: flex; gap: 6px;">
                             <div style="flex: 1;">
-                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Email ID *</label>
-                                <input type="email" id="cand-email" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
-                            </div>
-                            <div style="flex: 1;">
-                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Phone Number *</label>
-                                <input type="text" id="cand-phone" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
-                            </div>
-                        </div>
-
-                        <div style="display: flex; gap: 6px;">
-                            <div style="flex: 1;">
-                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Source</label>
-                                <select id="cand-source" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
-                                    <option>LinkedIn</option>
-                                    <option>JobStreet</option>
-                                    <option>Employee Referral</option>
-                                    <option>Direct Applicant</option>
-                                    <option>Consultant</option>
-                                    <option>Other</option>
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Gender *</label>
+                                <select id="cand-gender" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
                                 </select>
                             </div>
                             <div style="flex: 1;">
-                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Expected Salary (₱) *</label>
-                                <input type="number" id="cand-salary" min="0" value="0" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Source</label>
+                                <select id="cand-source" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                    <option value="Job Portal">Job Portal</option>
+                                    <option value="Referral">Referral</option>
+                                    <option value="Walk-in">Walk-in</option>
+                                    <option value="Consultancy">Consultancy</option>
+                                    <option value="Campus">Campus</option>
+                                    <option value="Internal Movement">Internal Movement</option>
+                                    <option value="Social Media">Social Media</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div>
-                            <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Address</label>
-                            <input type="text" id="cand-address" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
-                        </div>
-
+                        <!-- Row 3: Email & Phone -->
                         <div style="display: flex; gap: 6px;">
                             <div style="flex: 1;">
-                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Expected Joining Date</label>
-                                <input type="date" id="cand-doj" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Email ID *</label>
+                                <input type="email" id="cand-email" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Phone Number *</label>
+                                <input type="text" id="cand-phone" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                        </div>
+
+                        <!-- Row 4: Alt Phone & Location -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Alt Phone</label>
+                                <input type="text" id="cand-altphone" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Current Location</label>
+                                <input type="text" id="cand-location" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                        </div>
+
+                        <!-- Row 5: Full Address -->
+                        <div>
+                            <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Full Address</label>
+                            <input type="text" id="cand-address" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                        </div>
+
+                        <!-- Row 6: Company & Designation -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Current Company</label>
+                                <input type="text" id="cand-company" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Current Designation</label>
+                                <input type="text" id="cand-designation" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                        </div>
+
+                        <!-- Row 7: Experience -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Total Experience (Yrs)</label>
+                                <input type="text" id="cand-exp-total" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Relevant Experience (Yrs)</label>
+                                <input type="text" id="cand-exp-rel" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                        </div>
+
+                        <!-- Row 8: Compensation details -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Current Salary (₱) *</label>
+                                <input type="number" id="cand-sal-current" min="0" value="0" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Expected Salary (₱) *</label>
+                                <input type="number" id="cand-sal-expected" min="0" value="0" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Offered Salary (₱)</label>
+                                <input type="number" id="cand-sal-offered" min="0" value="0" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                        </div>
+
+                        <!-- Row 9: Notice Period & Shift -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Notice Period *</label>
+                                <select id="cand-notice" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                    <option value="Immediate">Immediate</option>
+                                    <option value="15 Days">15 Days</option>
+                                    <option value="30 Days">30 Days</option>
+                                    <option value="45 Days">45 Days</option>
+                                    <option value="60 Days">60 Days</option>
+                                    <option value="90 Days">90 Days</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Preferred Shift *</label>
+                                <select id="cand-shift" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                    <option value="Day">Day</option>
+                                    <option value="Night">Night</option>
+                                    <option value="Mid">Mid</option>
+                                    <option value="Shifting">Shifting</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Row 10: DOJ & Assigned Recruiter -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Joining Date</label>
+                                <input type="date" id="cand-joining-date" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Assigned Recruiter *</label>
+                                <input type="text" id="cand-recruiter" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                        </div>
+
+                        <!-- Row 11: Resume & Status -->
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Resume (Mock Name)</label>
+                                <input type="text" id="cand-resume" placeholder="e.g. Resume_John.pdf" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
                             </div>
                             <div style="flex: 1;">
                                 <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Candidate Status *</label>
                                 <select id="cand-status" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
-                                    <option>Interviewing</option>
-                                    <option>Offered</option>
-                                    <option>Accepted</option>
-                                    <option>Hired</option>
-                                    <option>Rejected</option>
+                                    <option value="Sourced">Sourced</option>
+                                    <option value="Screened">Screened</option>
+                                    <option value="Interview Scheduled">Interview Scheduled</option>
+                                    <option value="Interviewed">Interviewed</option>
+                                    <option value="Shortlisted">Shortlisted</option>
+                                    <option value="Offered">Offered</option>
+                                    <option value="Offer Accepted">Offer Accepted</option>
+                                    <option value="Offer Rejected">Offer Rejected</option>
+                                    <option value="Joined">Joined</option>
+                                    <option value="No Show">No Show</option>
+                                    <option value="Rejected">Rejected</option>
+                                    <option value="Hold">Hold</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <!-- Row 12: Remarks -->
+                        <div>
+                            <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Remarks (Recruiter Notes)</label>
+                            <textarea id="cand-remarks" rows="2" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); resize: vertical; font-family: inherit;"></textarea>
                         </div>
 
                         <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px;">
@@ -579,6 +718,146 @@
                     <div id="candidate-list" style="display: flex; flex-direction: column; gap: 8px;">
                         <!-- Dynamically filled with candidate cards -->
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        </div> <!-- End of #hiring-requisitions-view -->
+
+        <!-- ========== VIEW: HIRING DASHBOARD VIEW ========== -->
+        <div id="hiring-dashboard-view" class="hidden" style="margin: 0 40px 40px; max-width: 1360px; display: flex; flex-direction: column; gap: 24px;">
+            <!-- KPI Cards Grid (10 cards) -->
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#F59E0B">
+                        <span>⏳</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-open-reqs">0</span>
+                        <span class="stat-lbl">Open Requisitions</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#3B82F6">
+                        <span>👥</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-total-positions">0</span>
+                        <span class="stat-lbl">Total Positions Requested</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#6C63FF">
+                        <span>➕</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-candidates-added">0</span>
+                        <span class="stat-lbl">Candidates Added</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#06B6D4">
+                        <span>📅</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-interviews-scheduled">0</span>
+                        <span class="stat-lbl">Interviews Scheduled</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#8B5CF6">
+                        <span>✉️</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-offers-released">0</span>
+                        <span class="stat-lbl">Offers Released</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#EC4899">
+                        <span>🤝</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-offers-accepted">0</span>
+                        <span class="stat-lbl">Offers Accepted</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#10B981">
+                        <span>✨</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-joinings">0</span>
+                        <span class="stat-lbl">Total Joinings</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#EF4444">
+                        <span>❌</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-rejections">0</span>
+                        <span class="stat-lbl">Total Rejections</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#F97316">
+                        <span>⚠️</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-aging-positions">0</span>
+                        <span class="stat-lbl">Aging Positions (>30d)</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:#10B981">
+                        <span>⚡</span>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="db-stat-time-to-fill">0d</span>
+                        <span class="stat-lbl">Time to Fill (Avg)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Charts section (2 charts) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 24px;">
+                <div class="glass-card" style="padding: 20px;">
+                    <h3 style="font-size: 0.95rem; margin-bottom: 16px; color: var(--text);">Recruiter Workload & Candidate Statuses</h3>
+                    <div style="height: 280px; position: relative;">
+                        <canvas id="chart-recruiter-workload"></canvas>
+                    </div>
+                </div>
+                <div class="glass-card" style="padding: 20px;">
+                    <h3 style="font-size: 0.95rem; margin-bottom: 16px; color: var(--text);">Source-wise Recruitment Performance</h3>
+                    <div style="height: 280px; position: relative;">
+                        <canvas id="chart-rec-source-perf"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recruiter Productivity Scorecard Section -->
+            <div class="glass-card" style="padding: 20px; overflow: hidden;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 16px; color: var(--text);">Recruiter Productivity Scorecard</h3>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Recruiter Name</th>
+                                <th>Candidates Sourced</th>
+                                <th>Screened</th>
+                                <th>Interviewed</th>
+                                <th>Shortlisted</th>
+                                <th>Offered</th>
+                                <th>Joined</th>
+                                <th>No Show / Hold / Rejected</th>
+                                <th>Conversion Rate (Joined %)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recruiter-productivity-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -601,6 +880,15 @@
 
         <!-- ========== CONTAINER: STANDARD ANALYTICS ========== -->
         <div id="ana-standard-container">
+            <!-- Analytics Sub-navigation Tabs -->
+            <div class="ana-tabs" id="analytics-sub-tabs" style="margin: 0 40px 24px; max-width: 1360px; padding: 0;">
+                <button type="button" class="ana-tab-btn active" id="btn-ana-subview-funnel" onclick="switchAnalyticsSubTab('funnel')">🌪️ Recruitment Funnel</button>
+                <button type="button" class="ana-tab-btn" id="btn-ana-subview-recruiter" onclick="switchAnalyticsSubTab('recruiter')">👥 Recruiter Performance</button>
+                <button type="button" class="ana-tab-btn" id="btn-ana-subview-source" onclick="switchAnalyticsSubTab('source')">📍 Hiring Source</button>
+                <button type="button" class="ana-tab-btn" id="btn-ana-subview-aging" onclick="switchAnalyticsSubTab('aging')">⏳ Requisition Aging</button>
+                <button type="button" class="ana-tab-btn" id="btn-ana-subview-omtl" onclick="switchAnalyticsSubTab('omtl')">🏢 OM/TL Hiring</button>
+            </div>
+
             <!-- KPI Cards Ribbon -->
             <div class="stats-grid" style="margin-bottom: 24px;">
                 <div class="stat-card">
@@ -750,106 +1038,149 @@
                 </div>
             </div>
 
-            <!-- Chart Panels Grid -->
-            <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; padding: 0 40px; max-width: 1440px; margin: 0 auto; margin-bottom: 40px;">
-                <!-- Main Trend Chart -->
-                <div class="glass-card chart-card-lg">
-                    <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                        📈 Headcount Fulfillment Trend
-                        <span id="trend-period-lbl" style="font-size: 0.74rem; background: rgba(108,99,255,.15); color: var(--accent); padding: 2px 8px; border-radius: 12px; text-transform: capitalize;">daily</span>
-                    </h3>
-                    <div style="flex: 1; position: relative;">
-                        <canvas id="chart-trend"></canvas>
-                    </div>
-                </div>
-
-                <!-- Stage Pipeline -->
-                <div class="glass-card chart-card-lg">
-                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">📋 Stage Pipeline Analysis</h3>
-                    <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center;">
-                        <canvas id="chart-pipeline"></canvas>
-                    </div>
-                </div>
-
-                <!-- Department Headcount Ratios -->
-                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Department Headcount Fulfillment</h3>
-                    <div style="flex: 1; position: relative;">
-                        <canvas id="chart-department"></canvas>
-                    </div>
-                </div>
-
-                <!-- Top Requesters -->
-                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">👑 Top Requesters Analysis</h3>
-                    <div style="flex: 1; position: relative;">
-                        <canvas id="chart-requesters"></canvas>
-                    </div>
-                </div>
-
-                <!-- Sourcing Channel ROI Analysis -->
-                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                    <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                        💵 Sourcing Channel ROI Analysis
-                    </h3>
-                    <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none; flex: 1; display: flex; flex-direction: column;">
-                        <div class="table-scroll" style="flex: 1;">
-                            <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
-                                <thead>
-                                    <tr style="border-bottom: 1px solid var(--border); text-align: left;">
-                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase;">Channel</th>
-                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: center;">Hires</th>
-                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Total Spend</th>
-                                        <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Cost Per Hire</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="roi-table-body">
-                                    <!-- Dynamically populated -->
-                                </tbody>
-                            </table>
+            <!-- Analytics Subviews -->
+            <div id="ana-subviews-container" style="padding: 0 40px; max-width: 1440px; margin: 0 auto; margin-bottom: 40px;">
+                
+                <!-- 1. FUNNEL SUBVIEW -->
+                <div id="ana-subview-funnel" class="ana-subview">
+                    <div class="analytics-grid" style="display: grid; grid-template-columns: 1fr; gap: 24px;">
+                        <div class="glass-card chart-card-lg" style="height: 450px; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🌪️ Recruitment Stage Funnel Analysis</h3>
+                            <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center;">
+                                <canvas id="chart-pipeline"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Cost per Hire by Department -->
-                <div class="glass-card chart-card-sm" style="grid-column: span 1;">
-                    <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Cost per Hire by Department</h3>
-                    <div style="flex: 1; position: relative;">
-                        <canvas id="chart-cost"></canvas>
+                <!-- 2. RECRUITER PERFORMANCE SUBVIEW -->
+                <div id="ana-subview-recruiter" class="ana-subview" style="display: none;">
+                    <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; margin-bottom: 24px;">
+                        <div class="glass-card chart-card-lg" style="height: 380px; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">👥 Recruiter Load & Performance Chart</h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-recruiter-performance"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-card chart-card-lg" style="height: 380px; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">👑 Top Requesters Activity</h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-requesters"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recruiter Workload and Performance Table (Shared access/Admin) -->
+                    <div id="admin-recruiter-tracker-section" class="glass-card" style="padding: 24px; margin-top: 24px;">
+                        <h3 style="margin-bottom: 18px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                            👥 Recruiter Workload & Performance Tracker
+                        </h3>
+                        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">This tracks active requisitions, closed cases, time-to-hire velocities, and the oldest pending case for each recruiter.</p>
+                        <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none;">
+                            <div class="table-scroll">
+                                <table style="width:100%; border-collapse:collapse; font-size:.88rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Recruiter</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Active Cases</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Completed Cases</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Required HC</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Offered</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Accepted</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Hired</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">OAR</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Fill Rate</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Avg. Time to Hire</th>
+                                            <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Oldest Pending Case</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recruiter-tracker-table-body">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Recruiter Workload and Performance Table (Admin only) -->
-            <div id="admin-recruiter-tracker-section" class="glass-card" style="margin: 24px 40px 40px; padding: 24px; max-width: 1360px; display: none;">
-                <h3 style="margin-bottom: 18px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                    👥 Recruiter Workload & Performance Tracker
-                </h3>
-                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">This dashboard tracks active requisitions, closed cases, time-to-hire velocities, and the oldest pending case for each recruiter in real-time.</p>
-                <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none;">
-                    <div class="table-scroll">
-                        <table style="width:100%; border-collapse:collapse; font-size:.88rem;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Recruiter</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Active Cases</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Completed Cases</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Required HC</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Offered</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Accepted</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Hired</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">OAR</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Fill Rate</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase; text-align: center;">Avg. Time to Hire</th>
-                                    <th style="padding: 12px 10px; color: var(--text-dim); font-size: 0.76rem; text-transform: uppercase;">Oldest Pending Case</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recruiter-tracker-table-body">
-                                <!-- Dynamically populated -->
-                            </tbody>
-                        </table>
+                <!-- 3. HIRING SOURCE SUBVIEW -->
+                <div id="ana-subview-source" class="ana-subview" style="display: none;">
+                    <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px;">
+                        <!-- Hires by Channel Chart -->
+                        <div class="glass-card chart-card-lg" style="height: 380px; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">📍 Hires & Conversions by Channel</h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-source-hires"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- ROI Table -->
+                        <div class="glass-card chart-card-sm" style="display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                💵 Sourcing Channel ROI Analysis
+                            </h3>
+                            <div class="table-wrapper" style="margin: 0; background: transparent; border: none; box-shadow: none; flex: 1; display: flex; flex-direction: column;">
+                                <div class="table-scroll" style="flex: 1;">
+                                    <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
+                                        <thead>
+                                            <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                                <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase;">Channel</th>
+                                                <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: center;">Hires</th>
+                                                <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Total Spend</th>
+                                                <th style="padding: 10px 8px; color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; text-align: right;">Cost Per Hire</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="roi-table-body">
+                                            <!-- Dynamically populated -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- 4. REQUISITION AGING SUBVIEW -->
+                <div id="ana-subview-aging" class="ana-subview" style="display: none;">
+                    <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px;">
+                        <div class="glass-card chart-card-lg" style="height: 380px; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">⏳ Requisition Open Aging (Days Categories)</h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-requisition-aging"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card chart-card-sm" style="display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Cost per Hire by Department</h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-cost"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. OM/TL HIRING SUBVIEW -->
+                <div id="ana-subview-omtl" class="ana-subview" style="display: none;">
+                    <div class="analytics-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px;">
+                        <div class="glass-card chart-card-lg" style="height: 380px; display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                📈 Headcount Fulfillment Trend
+                                <span id="trend-period-lbl" style="font-size: 0.74rem; background: rgba(108,99,255,.15); color: var(--accent); padding: 2px 8px; border-radius: 12px; text-transform: capitalize;">daily</span>
+                            </h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-trend"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card chart-card-sm" style="display: flex; flex-direction: column;">
+                            <h3 style="margin-bottom: 18px; font-size: 1.05rem;">🏢 Department Headcount Fulfillment</h3>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="chart-department"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
             </div>
         </div>
 

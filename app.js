@@ -111,6 +111,147 @@ function saveTickets(tickets) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
 }
 
+// ───── Notification Center ─────
+const NOTIFICATIONS_KEY = 'rmg_notifications';
+
+function loadNotifications() {
+    try {
+        const stored = localStorage.getItem(NOTIFICATIONS_KEY);
+        if (stored) return JSON.parse(stored);
+    } catch { }
+    return [];
+}
+
+function saveNotifications(notifs) {
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifs));
+}
+
+function addNotification(recipientEmail, message, ticketId) {
+    if (!recipientEmail || !message) return;
+    const notifs = loadNotifications();
+    notifs.unshift({
+        id: 'NOTIF-' + Date.now(),
+        recipientEmail: recipientEmail.toLowerCase(),
+        message,
+        ticketId: ticketId || null,
+        date: new Date().toISOString(),
+        read: false
+    });
+    // Keep only last 100 notifications
+    if (notifs.length > 100) notifs.splice(100);
+    saveNotifications(notifs);
+}
+
+function renderNotifications() {
+    const user = getActiveUser();
+    const badge = document.getElementById('notification-badge-count');
+    const list = document.getElementById('notifications-list');
+    if (!badge || !list) return;
+
+    const notifs = loadNotifications();
+    const userEmail = user ? user.email.toLowerCase() : '';
+    const userNotifs = notifs.filter(n => n.recipientEmail === userEmail);
+    const unread = userNotifs.filter(n => !n.read);
+
+    // Update badge
+    if (unread.length > 0) {
+        badge.textContent = unread.length > 99 ? '99+' : unread.length;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+
+    // Render list
+    if (!userNotifs.length) {
+        list.innerHTML = '<div class="no-notifications" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.8rem;">No new notifications</div>';
+        return;
+    }
+
+    list.innerHTML = userNotifs.slice(0, 30).map(n => {
+        const timeAgo = getTimeAgo(n.date);
+        return `
+            <div class="notif-item" style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${n.read ? 'transparent' : 'rgba(108,99,255,0.05)'}; transition: background 0.2s;" onclick="viewNotifTicket('${n.ticketId || ''}', '${n.id}')">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${n.read ? 'var(--border)' : 'var(--accent)'}; flex-shrink: 0; margin-top: 5px;"></div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 0.76rem; color: var(--text); line-height: 1.4; margin-bottom: 2px;">${escapeHTML(n.message)}</div>
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">${timeAgo}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getTimeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function toggleNotificationsDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('notifications-dropdown');
+    if (!dropdown) return;
+    const isHidden = dropdown.classList.contains('hidden');
+    if (isHidden) {
+        dropdown.classList.remove('hidden');
+        renderNotifications();
+    } else {
+        dropdown.classList.add('hidden');
+    }
+}
+
+function clearAllNotifications(event) {
+    if (event) event.stopPropagation();
+    const user = getActiveUser();
+    if (!user) return;
+    const notifs = loadNotifications();
+    const cleaned = notifs.filter(n => n.recipientEmail !== user.email.toLowerCase());
+    saveNotifications(cleaned);
+    renderNotifications();
+    showToast('Cleared', 'All notifications have been cleared.');
+}
+
+function markNotificationRead(id, event) {
+    if (event) event.stopPropagation();
+    const notifs = loadNotifications();
+    const idx = notifs.findIndex(n => n.id === id);
+    if (idx !== -1) {
+        notifs[idx].read = true;
+        saveNotifications(notifs);
+        renderNotifications();
+    }
+}
+
+function viewNotifTicket(ticketId, notifId) {
+    // Mark as read
+    if (notifId) {
+        const notifs = loadNotifications();
+        const idx = notifs.findIndex(n => n.id === notifId);
+        if (idx !== -1) { notifs[idx].read = true; saveNotifications(notifs); }
+    }
+    // Close dropdown
+    document.getElementById('notifications-dropdown')?.classList.add('hidden');
+    // Navigate to ticket if provided
+    if (ticketId) {
+        showTicketDetail(ticketId);
+    }
+    renderNotifications();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('notifications-dropdown');
+    const container = document.getElementById('nav-notifications');
+    if (dropdown && !dropdown.classList.contains('hidden') && container && !container.contains(event.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
 function generateTicketId() {
     const tickets = loadTickets();
     const year = new Date().getFullYear();
@@ -206,10 +347,24 @@ function initDefaultUsers() {
             password: 'requester',
             name: 'John Requester',
             role: 'Requester'
+        },
+        {
+            email: 'leadership@intelegencia.com',
+            password: 'leadership',
+            name: 'Executive Leadership',
+            role: 'Leadership'
         }
     ];
     localStorage.setItem(USERS_KEY, JSON.stringify(defaults));
     return defaults;
+}
+
+// ───── User Email Lookup ─────
+function getUserEmailByName(name) {
+    if (!name) return null;
+    const users = loadUsers();
+    const u = users.find(u => (u.name || '').toLowerCase() === name.toLowerCase());
+    return u ? u.email : null;
 }
 
 function getActiveUser() {
@@ -264,24 +419,40 @@ function updateUIForUser() {
     // Update Navigation Links Visibility
     const isHr = user.role === 'HR Team / Admin';
     const isRecruiter = user.role === 'Recruiter';
+    const isLeadership = user.role === 'Leadership';
+    const isRequester = user.role === 'Requester';
     const isHrOrRecruiter = isHr || isRecruiter;
+    const hasWriteAccess = isHrOrRecruiter;
+    const canViewHiringAnalytics = isHrOrRecruiter || isLeadership || isRequester;
     
     const hiringNavLink = document.querySelector('.nav-link[data-page="hiring"]');
     const analyticsNavLink = document.querySelector('.nav-link[data-page="analytics"]');
     
-    if (hiringNavLink) hiringNavLink.style.display = isHrOrRecruiter ? '' : 'none';
-    if (analyticsNavLink) analyticsNavLink.style.display = isHrOrRecruiter ? '' : 'none';
+    if (hiringNavLink) hiringNavLink.style.display = canViewHiringAnalytics ? '' : 'none';
+    if (analyticsNavLink) analyticsNavLink.style.display = canViewHiringAnalytics ? '' : 'none';
 
     // Update Home page quick access cards
     const hiringQaCard = document.querySelector('.qa-card[onclick*="navigate(\'hiring\')"]');
     if (hiringQaCard) {
-        hiringQaCard.style.display = isHrOrRecruiter ? '' : 'none';
+        hiringQaCard.style.display = canViewHiringAnalytics ? '' : 'none';
     }
 
     // Toggle main page hero action button "Open Dashboard"
     const heroDashboardBtn = document.querySelector('.hero-actions .btn-outline[onclick*="navigate(\'hiring\')"]');
     if (heroDashboardBtn) {
-        heroDashboardBtn.style.display = isHrOrRecruiter ? '' : 'none';
+        heroDashboardBtn.style.display = canViewHiringAnalytics ? '' : 'none';
+    }
+
+    // Hide/show hiring main tabs (Recruiter Dashboard tab) based on write access
+    const hiringMainTabs = document.getElementById('hiring-main-tabs');
+    if (hiringMainTabs) {
+        hiringMainTabs.style.display = hasWriteAccess ? 'flex' : 'none';
+    }
+
+    // Hide/show Add Candidate button based on write access
+    const btnAddCandidate = document.getElementById('btn-add-candidate-toggle');
+    if (btnAddCandidate) {
+        btnAddCandidate.style.display = hasWriteAccess ? '' : 'none';
     }
 
     // Hide/show admin-security-section and adjust grid for Recruiter/Admin
@@ -312,6 +483,9 @@ function updateUIForUser() {
         }
         scopeInitialized = true;
     }
+
+    // Render notifications
+    renderNotifications();
 }
 
 function navigate(page) {
@@ -325,10 +499,8 @@ function navigate(page) {
         if (page === 'auth') {
             page = 'home';
         }
-        // Role Gate: Requester cannot access 'hiring' or 'analytics'
-        if ((page === 'hiring' || page === 'analytics') && user.role !== 'HR Team / Admin' && user.role !== 'Recruiter') {
-            page = 'home';
-        }
+        // Role Gate: All logged-in users can view hiring and analytics (Requesters/Leadership get read-only view)
+        // No additional restriction needed here; UI elements are hidden/shown based on role in updateUIForUser
     }
 
     // Hide/show navigation and footer depending on auth page
@@ -696,9 +868,31 @@ const expandedCandidateIds = new Set();
 
 function recalculateTicketCounts(t) {
     if (t.candidates && t.candidates.length > 0) {
-        t.hiredCount = t.candidates.filter(c => c.status === 'Hired').length;
-        t.acceptedCount = t.candidates.filter(c => c.status === 'Accepted' || c.status === 'Hired').length;
-        t.offeredCount = t.candidates.filter(c => c.status === 'Offered' || c.status === 'Accepted' || c.status === 'Hired').length;
+        // 12-stage pipeline mapping:
+        // Joined => hired
+        // Offer Accepted, Joined => accepted
+        // Offered, Offer Accepted, Joined => offered
+        t.hiredCount = t.candidates.filter(c => c.status === 'Joined' || c.status === 'Hired').length;
+        t.acceptedCount = t.candidates.filter(c => ['Offer Accepted', 'Joined', 'Hired'].includes(c.status)).length;
+        t.offeredCount = t.candidates.filter(c => ['Offered', 'Offer Accepted', 'Joined', 'Hired'].includes(c.status)).length;
+    }
+
+    // Auto-complete ticket when all positions are filled
+    if (t.requiredHC > 0 && t.hiredCount >= t.requiredHC && t.status !== 'Completed' && t.status !== 'Cancelled') {
+        t.status = 'Completed';
+        t.stage = 'Joined';
+        t.updatedAt = new Date().toISOString();
+        t.history = t.history || [];
+        t.history.push({
+            date: new Date().toISOString(),
+            action: `Ticket auto-completed: All ${t.requiredHC} position(s) filled.`,
+            by: 'System'
+        });
+        // Notify requester
+        const reqEmail = getUserEmailByName(t.requestedBy);
+        if (reqEmail) {
+            addNotification(reqEmail, `🎉 Ticket ${t.ticketId} is now COMPLETED! All ${t.requiredHC} position(s) have been filled.`, t.ticketId);
+        }
     }
 }
 
@@ -781,13 +975,52 @@ function renderCandidates(ticketId) {
         return;
     }
 
+    const CONFIDENTIAL_ROLES = ['Requester', 'Leadership'];
+    const userRole = getActiveUserRole();
+    const isConfidentialView = CONFIDENTIAL_ROLES.includes(userRole);
+
     listContainer.innerHTML = candidates.map(c => {
-        const initials = `${c.firstName.charAt(0)}${c.lastName.charAt(0)}`.toUpperCase();
+        const initials = `${(c.firstName || '?').charAt(0)}${(c.lastName || '?').charAt(0)}`.toUpperCase();
         const candId = c.id;
         const isExpanded = expandedCandidateIds.has(candId);
         const drawerClass = isExpanded ? 'candidate-details-drawer' : 'candidate-details-drawer hidden';
         const chevron = isExpanded ? '▼' : '▶';
 
+        // Confidential field masking
+        const email       = isConfidentialView ? '[CONFIDENTIAL]' : escapeHTML(c.email || '—');
+        const phone       = isConfidentialView ? '[CONFIDENTIAL]' : escapeHTML(c.phone || '—');
+        const altPhone    = isConfidentialView ? '[CONFIDENTIAL]' : escapeHTML(c.altPhone || '—');
+        const address     = isConfidentialView ? '[CONFIDENTIAL]' : escapeHTML(c.address || '—');
+        const curSal      = isConfidentialView ? '[CONFIDENTIAL]' : `₹${parseFloat(c.currentSalary || 0).toLocaleString()}`;
+        const expSal      = isConfidentialView ? '[CONFIDENTIAL]' : `₹${parseFloat(c.expectedSalary || 0).toLocaleString()}`;
+        const offSal      = isConfidentialView ? '[CONFIDENTIAL]' : `₹${parseFloat(c.offeredSalary || 0).toLocaleString()}`;
+        const resumeName  = isConfidentialView ? '[CONFIDENTIAL]' : escapeHTML(c.resumeName || '—');
+        const remarks     = isConfidentialView ? '[CONFIDENTIAL]' : escapeHTML(c.remarks || '—');
+
+        // Action buttons (hidden for read-only roles)
+        const actionBtns = isConfidentialView ? '' : `
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;">
+                <button class="cand-action-btn" onclick="event.stopPropagation(); editCandidate('${candId}')" title="Edit Candidate">✏️ Edit</button>
+                <button class="cand-action-btn delete" onclick="event.stopPropagation(); deleteCandidate('${candId}')" title="Delete Candidate">🗑️ Delete</button>
+            </div>`;
+
+        // Status history timeline
+        const history = c.statusHistory || [];
+        const historyHTML = history.length ? `
+            <div class="candidate-history-timeline" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                <div style="font-size: 0.66rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;">History</div>
+                ${history.slice().reverse().map(h => `
+                    <div class="history-timeline-item" style="display: flex; gap: 8px; margin-bottom: 6px; font-size: 0.72rem;">
+                        <div class="history-bullet" style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; margin-top: 5px;"></div>
+                        <div>
+                            <span style="color: var(--text); font-weight: 600;">${escapeHTML(h.status || '')}</span>
+                            <span style="color: var(--text-muted);"> · ${fmtDate(h.date)} · ${escapeHTML(h.updatedBy || '')}</span>
+                            ${h.remarks ? `<div style="color: var(--text-dim); margin-top: 2px; font-size: 0.68rem;">${escapeHTML(h.remarks)}</div>` : ''}
+                        </div>
+                    </div>`).join('')}
+            </div>` : '';
+
+        const statusClass = (c.status || 'sourced').toLowerCase().replace(/\s+/g, '-');
         return `
         <div class="candidate-card" data-cand-id="${candId}" onclick="toggleCandidateExpand('${candId}', event)">
             <div class="candidate-card-header">
@@ -796,36 +1029,37 @@ function renderCandidates(ticketId) {
                     <div class="candidate-name">${escapeHTML(c.firstName)} ${escapeHTML(c.lastName)}</div>
                     <div class="candidate-meta-sub">
                         <span>${escapeHTML(c.source || 'Other')}</span> &bull; 
-                        <span>DOJ: ${c.expectedDOJ ? fmtDate(c.expectedDOJ) : 'TBD'}</span>
+                        <span>${escapeHTML(c.currentDesignation || '—')} @ ${escapeHTML(c.currentCompany || '—')}</span>
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                    <span class="cand-badge ${c.status.toLowerCase()}">${c.status}</span>
+                    <span class="cand-badge ${statusClass}">${c.status}</span>
                     <span class="expand-chevron" style="font-size: 0.6rem; color: var(--text-muted);">${chevron}</span>
                 </div>
             </div>
             
             <div class="${drawerClass}" id="cand-drawer-${candId}">
-                <div class="cand-detail-item">
-                    <strong>Email:</strong>
-                    <span>${escapeHTML(c.email)}</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.72rem; margin-bottom: 6px;">
+                    <div class="cand-detail-item"><strong>Email:</strong> ${email}</div>
+                    <div class="cand-detail-item"><strong>Phone:</strong> ${phone}</div>
+                    <div class="cand-detail-item"><strong>Alt Phone:</strong> ${altPhone}</div>
+                    <div class="cand-detail-item"><strong>Gender:</strong> ${escapeHTML(c.gender || '—')}</div>
+                    <div class="cand-detail-item"><strong>Location:</strong> ${escapeHTML(c.location || '—')}</div>
+                    <div class="cand-detail-item"><strong>Notice Period:</strong> ${escapeHTML(c.noticePeriod || '—')}</div>
+                    <div class="cand-detail-item"><strong>Shift Pref:</strong> ${escapeHTML(c.preferredShift || '—')}</div>
+                    <div class="cand-detail-item"><strong>Total Exp:</strong> ${escapeHTML(String(c.totalExperience || '—'))} yrs</div>
+                    <div class="cand-detail-item"><strong>Rel. Exp:</strong> ${escapeHTML(String(c.relevantExperience || '—'))} yrs</div>
+                    <div class="cand-detail-item"><strong>Joining Date:</strong> ${c.joiningDate ? fmtDate(c.joiningDate) : 'TBD'}</div>
+                    <div class="cand-detail-item"><strong>Recruiter:</strong> ${escapeHTML(c.assignedRecruiter || '—')}</div>
+                    <div class="cand-detail-item"><strong>Cur. Salary:</strong> ${curSal}</div>
+                    <div class="cand-detail-item"><strong>Exp. Salary:</strong> ${expSal}</div>
+                    <div class="cand-detail-item"><strong>Offered Sal:</strong> ${offSal}</div>
+                    <div class="cand-detail-item" style="grid-column: 1/-1;"><strong>Address:</strong> ${address}</div>
+                    <div class="cand-detail-item" style="grid-column: 1/-1;"><strong>Resume:</strong> 📄 ${resumeName}</div>
+                    <div class="cand-detail-item" style="grid-column: 1/-1;"><strong>Remarks:</strong> ${remarks}</div>
                 </div>
-                <div class="cand-detail-item">
-                    <strong>Phone:</strong>
-                    <span>${escapeHTML(c.phone)}</span>
-                </div>
-                <div class="cand-detail-item">
-                    <strong>Expected Salary:</strong>
-                    <span>₱${parseFloat(c.expectedSalary || 0).toLocaleString()}</span>
-                </div>
-                <div class="cand-detail-item">
-                    <strong>Address:</strong>
-                    <span>${escapeHTML(c.address || '—')}</span>
-                </div>
-                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;">
-                    <button class="cand-action-btn" onclick="event.stopPropagation(); editCandidate('${candId}')" title="Edit Candidate">✏️ Edit</button>
-                    <button class="cand-action-btn delete" onclick="event.stopPropagation(); deleteCandidate('${candId}')" title="Delete Candidate">🗑️ Delete</button>
-                </div>
+                ${historyHTML}
+                ${actionBtns}
             </div>
         </div>`;
     }).join('');
@@ -857,16 +1091,28 @@ function toggleCandidateForm(show) {
     if (!form) return;
     if (show) {
         form.classList.remove('hidden');
+        // Reset all fields
+        const fields = [
+            'cand-form-id','cand-first-name','cand-last-name','cand-gender',
+            'cand-email','cand-phone','cand-altphone','cand-location','cand-address',
+            'cand-company','cand-designation','cand-exp-total','cand-exp-rel',
+            'cand-sal-current','cand-sal-expected','cand-sal-offered',
+            'cand-notice','cand-shift','cand-joining-date','cand-recruiter',
+            'cand-resume','cand-remarks'
+        ];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = el.defaultValue || '';
+        });
         document.getElementById('cand-form-id').value = '';
-        document.getElementById('cand-first-name').value = '';
-        document.getElementById('cand-last-name').value = '';
-        document.getElementById('cand-email').value = '';
-        document.getElementById('cand-phone').value = '';
-        document.getElementById('cand-source').value = 'LinkedIn';
-        document.getElementById('cand-salary').value = '0';
-        document.getElementById('cand-address').value = '';
-        document.getElementById('cand-doj').value = '';
-        document.getElementById('cand-status').value = 'Interviewing';
+        document.getElementById('cand-status').value = 'Sourced';
+
+        // Auto-fill recruiter field with current user if they are a recruiter
+        const user = getActiveUser();
+        const recField = document.getElementById('cand-recruiter');
+        if (recField && user && (user.role === 'Recruiter' || user.role === 'HR Team / Admin')) {
+            recField.value = user.name;
+        }
     } else {
         form.classList.add('hidden');
         form.reset();
@@ -884,82 +1130,141 @@ function saveCandidate(e) {
     const ticket = tickets[tIdx];
     ticket.candidates = ticket.candidates || [];
 
-    const candId = document.getElementById('cand-form-id').value;
-    const firstName = document.getElementById('cand-first-name').value.trim();
-    const lastName = document.getElementById('cand-last-name').value.trim();
-    const email = document.getElementById('cand-email').value.trim();
-    const phone = document.getElementById('cand-phone').value.trim();
-    const source = document.getElementById('cand-source').value;
-    const expectedSalary = parseFloat(document.getElementById('cand-salary').value) || 0;
-    const address = document.getElementById('cand-address').value.trim();
-    const expectedDOJ = document.getElementById('cand-doj').value;
-    const status = document.getElementById('cand-status').value;
+    const candId       = document.getElementById('cand-form-id').value;
+    const firstName    = document.getElementById('cand-first-name').value.trim();
+    const lastName     = document.getElementById('cand-last-name').value.trim();
+    const gender       = document.getElementById('cand-gender')?.value || '';
+    const email        = document.getElementById('cand-email').value.trim();
+    const phone        = document.getElementById('cand-phone').value.trim();
+    const altPhone     = document.getElementById('cand-altphone')?.value.trim() || '';
+    const location     = document.getElementById('cand-location')?.value.trim() || '';
+    const address      = document.getElementById('cand-address').value.trim();
+    const source       = document.getElementById('cand-source').value;
+    const currentCompany    = document.getElementById('cand-company')?.value.trim() || '';
+    const currentDesignation= document.getElementById('cand-designation')?.value.trim() || '';
+    const totalExperience   = document.getElementById('cand-exp-total')?.value.trim() || '';
+    const relevantExperience= document.getElementById('cand-exp-rel')?.value.trim() || '';
+    const currentSalary  = parseFloat(document.getElementById('cand-sal-current')?.value) || 0;
+    const expectedSalary = parseFloat(document.getElementById('cand-sal-expected')?.value) || 0;
+    const offeredSalary  = parseFloat(document.getElementById('cand-sal-offered')?.value) || 0;
+    const noticePeriod   = document.getElementById('cand-notice')?.value || 'Immediate';
+    const preferredShift = document.getElementById('cand-shift')?.value || 'Day';
+    const joiningDate    = document.getElementById('cand-joining-date')?.value || '';
+    const assignedRecruiter = document.getElementById('cand-recruiter')?.value.trim() || '';
+    const resumeName     = document.getElementById('cand-resume')?.value.trim() || '';
+    const remarks        = document.getElementById('cand-remarks')?.value.trim() || '';
+    const status         = document.getElementById('cand-status').value;
 
     const user = getActiveUser();
     const updaterName = user ? user.name : 'System';
+    const now = new Date().toISOString();
+
+    // Duplicate detection for new candidates
+    if (!candId && (email || phone)) {
+        let dupFound = false;
+        let dupTicketId = '';
+        for (const t of tickets) {
+            for (const c of (t.candidates || [])) {
+                if ((email && c.email && c.email.toLowerCase() === email.toLowerCase()) ||
+                    (phone && c.phone && c.phone === phone)) {
+                    dupFound = true;
+                    dupTicketId = t.ticketId;
+                    break;
+                }
+            }
+            if (dupFound) break;
+        }
+        if (dupFound) {
+            const proceed = window.confirm(
+                `⚠️ Duplicate Detected!\n\nA candidate with this email or phone already exists (Ticket: ${dupTicketId}).\n\nDo you still want to proceed?`
+            );
+            if (!proceed) return;
+        }
+    }
 
     if (candId) {
+        // EDIT existing candidate
         const cIdx = ticket.candidates.findIndex(c => c.id === candId);
         if (cIdx !== -1) {
             const oldCand = ticket.candidates[cIdx];
-            const changes = [];
-            if (oldCand.status !== status) {
-                changes.push(`Candidate ${firstName} status changed to ${status}`);
+            const oldStatus = oldCand.status;
+            const statusChanged = oldStatus !== status;
+
+            // Append to status history if status changed
+            const statusHistory = oldCand.statusHistory || [];
+            if (statusChanged) {
+                statusHistory.push({ status, date: now, updatedBy: updaterName, remarks });
             }
-            
+
             ticket.candidates[cIdx] = {
                 ...oldCand,
-                firstName,
-                lastName,
-                email,
-                phone,
-                source,
-                expectedSalary,
-                address,
-                expectedDOJ,
-                status
+                firstName, lastName, gender, email, phone, altPhone, location, address, source,
+                currentCompany, currentDesignation, totalExperience, relevantExperience,
+                currentSalary, expectedSalary, offeredSalary, noticePeriod, preferredShift,
+                joiningDate, assignedRecruiter, resumeName, remarks, status,
+                lastUpdatedDate: now, updatedBy: updaterName, statusHistory
             };
 
+            const action = statusChanged
+                ? `Candidate ${firstName} status: ${oldStatus} → ${status}`
+                : `Candidate ${firstName} ${lastName} details updated`;
+
             ticket.history = ticket.history || [];
-            ticket.history.push({
-                date: new Date().toISOString(),
-                action: changes.length ? changes.join(', ') : `Candidate ${firstName} details updated`,
-                by: updaterName
-            });
-            showToast('Candidate Updated', `Successfully updated candidate ${firstName} ${lastName}`);
+            ticket.history.push({ date: now, action, by: updaterName });
+
+            // Notify requester when status changes
+            if (statusChanged) {
+                const reqEmail = getUserEmailByName(ticket.requestedBy);
+                if (reqEmail) {
+                    addNotification(reqEmail,
+                        `📋 Ticket ${ticket.ticketId}: Candidate ${firstName} ${lastName} status changed to "${status}".`,
+                        ticket.ticketId
+                    );
+                }
+            }
+
+            showToast('Candidate Updated', `Successfully updated ${firstName} ${lastName}`);
         }
     } else {
+        // ADD new candidate
         const newCand = {
-            id: 'CAND-' + Date.now(),
-            firstName,
-            lastName,
-            email,
-            phone,
-            source,
-            expectedSalary,
-            address,
-            expectedDOJ,
-            status,
-            createdAt: new Date().toISOString()
+            id: 'CAND-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+            firstName, lastName, gender, email, phone, altPhone, location, address, source,
+            currentCompany, currentDesignation, totalExperience, relevantExperience,
+            currentSalary, expectedSalary, offeredSalary, noticePeriod, preferredShift,
+            joiningDate, assignedRecruiter, resumeName, remarks, status,
+            createdAt: now, lastUpdatedDate: now, updatedBy: updaterName,
+            statusHistory: [{ status, date: now, updatedBy: updaterName, remarks }]
         };
         ticket.candidates.push(newCand);
         ticket.history = ticket.history || [];
         ticket.history.push({
-            date: new Date().toISOString(),
+            date: now,
             action: `Candidate ${firstName} ${lastName} added (Status: ${status})`,
             by: updaterName
         });
-        showToast('Candidate Added', `Successfully added candidate ${firstName} ${lastName}`);
+
+        // Notify requester when candidate is added
+        const reqEmail = getUserEmailByName(ticket.requestedBy);
+        if (reqEmail) {
+            addNotification(reqEmail,
+                `👤 New candidate added to Ticket ${ticket.ticketId}: ${firstName} ${lastName} (Status: ${status}).`,
+                ticket.ticketId
+            );
+        }
+
+        showToast('Candidate Added', `Successfully added ${firstName} ${lastName}`);
     }
 
     recalculateTicketCounts(ticket);
-    ticket.updatedAt = new Date().toISOString();
+    ticket.updatedAt = now;
 
     saveTickets(tickets);
     toggleCandidateForm(false);
-    
+    renderNotifications();
     renderCandidates(activeCandidateTicketId);
     renderHiringTickets();
+    updateDashboardStats();
 }
 
 function editCandidate(candId) {
@@ -974,16 +1279,32 @@ function editCandidate(candId) {
     const form = document.getElementById('candidate-form');
     if (form) form.classList.remove('hidden');
 
-    document.getElementById('cand-form-id').value = cand.id;
-    document.getElementById('cand-first-name').value = cand.firstName;
-    document.getElementById('cand-last-name').value = cand.lastName;
-    document.getElementById('cand-email').value = cand.email;
-    document.getElementById('cand-phone').value = cand.phone;
-    document.getElementById('cand-source').value = cand.source || 'LinkedIn';
-    document.getElementById('cand-salary').value = cand.expectedSalary || 0;
-    document.getElementById('cand-address').value = cand.address || '';
-    document.getElementById('cand-doj').value = cand.expectedDOJ || '';
-    document.getElementById('cand-status').value = cand.status;
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+
+    setVal('cand-form-id',     cand.id);
+    setVal('cand-first-name',  cand.firstName);
+    setVal('cand-last-name',   cand.lastName);
+    setVal('cand-gender',      cand.gender || '');
+    setVal('cand-email',       cand.email);
+    setVal('cand-phone',       cand.phone);
+    setVal('cand-altphone',    cand.altPhone || '');
+    setVal('cand-location',    cand.location || '');
+    setVal('cand-address',     cand.address || '');
+    setVal('cand-source',      cand.source || 'Job Portal');
+    setVal('cand-company',     cand.currentCompany || '');
+    setVal('cand-designation', cand.currentDesignation || '');
+    setVal('cand-exp-total',   cand.totalExperience || '');
+    setVal('cand-exp-rel',     cand.relevantExperience || '');
+    setVal('cand-sal-current', cand.currentSalary || 0);
+    setVal('cand-sal-expected',cand.expectedSalary || 0);
+    setVal('cand-sal-offered', cand.offeredSalary || 0);
+    setVal('cand-notice',      cand.noticePeriod || 'Immediate');
+    setVal('cand-shift',       cand.preferredShift || 'Day');
+    setVal('cand-joining-date',cand.joiningDate || '');
+    setVal('cand-recruiter',   cand.assignedRecruiter || '');
+    setVal('cand-resume',      cand.resumeName || '');
+    setVal('cand-remarks',     cand.remarks || '');
+    setVal('cand-status',      cand.status);
     
     form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -1212,6 +1533,326 @@ function animateNum(elId, target) {
         if (i >= steps) { el.textContent = target; clearInterval(iv); }
     }, 30);
 }
+
+// ───── Hiring Tab Switcher ─────
+function switchHiringTab(tab) {
+    const reqView = document.getElementById('hiring-requisitions-view');
+    const dashView = document.getElementById('hiring-dashboard-view');
+    const btnReq = document.getElementById('btn-hiring-tab-requisitions');
+    const btnDash = document.getElementById('btn-hiring-tab-dashboard');
+
+    if (tab === 'requisitions') {
+        if (reqView) reqView.classList.remove('hidden');
+        if (dashView) dashView.classList.add('hidden');
+        if (btnReq) { btnReq.classList.add('active'); }
+        if (btnDash) { btnDash.classList.remove('active'); }
+    } else if (tab === 'dashboard') {
+        if (reqView) reqView.classList.add('hidden');
+        if (dashView) dashView.classList.remove('hidden');
+        if (btnReq) { btnReq.classList.remove('active'); }
+        if (btnDash) { btnDash.classList.add('active'); }
+        refreshRecruiterDashboard();
+    }
+}
+
+// ───── Recruiter Dashboard Refresh ─────
+function refreshRecruiterDashboard() {
+    const allTickets = loadTickets();
+    const user = getActiveUser();
+    const isRecruiter = user && user.role === 'Recruiter';
+
+    // Apply scope filter
+    let tickets = allTickets;
+    if (isRecruiter && currentHiringScope === 'my') {
+        tickets = allTickets.filter(t => t.assignedRecruiter === user.name);
+    }
+
+    // Collect all candidates
+    const allCandidates = [];
+    tickets.forEach(t => {
+        (t.candidates || []).forEach(c => {
+            allCandidates.push({ ...c, ticketId: t.ticketId, ticketDept: t.department });
+        });
+    });
+
+    const today = new Date();
+
+    // KPI: Open Requisitions
+    const openReqs = tickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+    const totalPositions = tickets.reduce((s, t) => s + (t.requiredHC || 0), 0);
+    const candidatesAdded = allCandidates.length;
+    const interviewsScheduled = allCandidates.filter(c => c.status === 'Interview Scheduled' || c.status === 'Interviewed').length;
+    const offersReleased = allCandidates.filter(c => ['Offered', 'Offer Accepted', 'Joined', 'Hired'].includes(c.status)).length;
+    const offersAccepted = allCandidates.filter(c => ['Offer Accepted', 'Joined', 'Hired'].includes(c.status)).length;
+    const totalJoinings = allCandidates.filter(c => c.status === 'Joined' || c.status === 'Hired').length;
+    const totalRejections = allCandidates.filter(c => c.status === 'Rejected').length;
+
+    // Aging: open tickets open > 30 days
+    const agingPositions = tickets.filter(t => {
+        if (t.status === 'Completed' || t.status === 'Cancelled') return false;
+        const created = t.createdAt ? new Date(t.createdAt) : null;
+        if (!created) return false;
+        return Math.floor((today - created) / (1000 * 60 * 60 * 24)) > 30;
+    }).length;
+
+    // Avg Time to Fill
+    const completedTickets = tickets.filter(t => t.status === 'Completed');
+    let avgTimeToFill = '0d';
+    if (completedTickets.length) {
+        let totalDays = 0;
+        completedTickets.forEach(t => {
+            const created = new Date(t.createdAt);
+            let closed = t.updatedAt ? new Date(t.updatedAt) : today;
+            const closedHist = t.history?.find(h => h.action.includes('Completed'));
+            if (closedHist) closed = new Date(closedHist.date);
+            totalDays += Math.ceil(Math.abs(closed - created) / (1000 * 60 * 60 * 24));
+        });
+        avgTimeToFill = `${Math.round(totalDays / completedTickets.length)}d`;
+    }
+
+    // Set KPI elements
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('db-stat-open-reqs', openReqs);
+    setEl('db-stat-total-positions', totalPositions);
+    setEl('db-stat-candidates-added', candidatesAdded);
+    setEl('db-stat-interviews-scheduled', interviewsScheduled);
+    setEl('db-stat-offers-released', offersReleased);
+    setEl('db-stat-offers-accepted', offersAccepted);
+    setEl('db-stat-joinings', totalJoinings);
+    setEl('db-stat-rejections', totalRejections);
+    setEl('db-stat-aging-positions', agingPositions);
+    setEl('db-stat-time-to-fill', avgTimeToFill);
+
+    // Chart 1: Recruiter Workload & Candidate Status distribution
+    const statusCounts = {};
+    allCandidates.forEach(c => {
+        const s = c.status || 'Unknown';
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+
+    const wlCanvas = document.getElementById('chart-recruiter-workload');
+    if (wlCanvas) {
+        if (window.chartRecruiterWorkload) { window.chartRecruiterWorkload.destroy(); window.chartRecruiterWorkload = null; }
+        const wlLabels = Object.keys(statusCounts).filter(k => statusCounts[k] > 0);
+        const wlData = wlLabels.map(k => statusCounts[k]);
+        const tc = getChartThemeColors();
+        const palette = ['#ED1924','#F37021','#06B6D4','#8B5CF6','#10B981','#F59E0B','#3B82F6','#EC4899','#059669','#6B7280','#EF4444','#6C63FF'];
+        if (wlLabels.length > 0) {
+            window.chartRecruiterWorkload = new Chart(wlCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: wlLabels,
+                    datasets: [{ data: wlData, backgroundColor: wlLabels.map((_, i) => palette[i % palette.length]), borderColor: tc.borderBaseColor, borderWidth: 2 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: tc.labelColor, font: { family: 'Inter', size: 10 } } },
+                        tooltip: { backgroundColor: tc.tooltipBg, titleColor: tc.tooltipTitle, bodyColor: tc.tooltipBody, borderColor: tc.tooltipBorder, borderWidth: 1, cornerRadius: 8 }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+    }
+
+    // Chart 2: Source-wise Candidate Pipeline
+    const sourceCounts = {};
+    allCandidates.forEach(c => {
+        const s = c.source || 'Other';
+        sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+    });
+    const srcCanvas = document.getElementById('chart-rec-source-perf');
+    if (srcCanvas) {
+        if (window.chartRecSourcePerf) { window.chartRecSourcePerf.destroy(); window.chartRecSourcePerf = null; }
+        const srcLabels = Object.keys(sourceCounts).sort((a, b) => sourceCounts[b] - sourceCounts[a]);
+        const srcData = srcLabels.map(k => sourceCounts[k]);
+        const tc = getChartThemeColors();
+        if (srcLabels.length > 0) {
+            window.chartRecSourcePerf = new Chart(srcCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: srcLabels,
+                    datasets: [{ label: 'Candidates', data: srcData, backgroundColor: 'rgba(108,99,255,0.55)', borderColor: 'rgba(108,99,255,1)', borderWidth: 1, borderRadius: 4 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: tc.tooltipBg, titleColor: tc.tooltipTitle, bodyColor: tc.tooltipBody, borderColor: tc.tooltipBorder, borderWidth: 1, cornerRadius: 8 } },
+                    scales: { x: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor } }, y: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor, stepSize: 1 } } }
+                }
+            });
+        }
+    }
+
+    // Recruiter Productivity Scorecard
+    const productivityTbody = document.getElementById('recruiter-productivity-tbody');
+    if (productivityTbody) {
+        const recruiterMap = {};
+        allCandidates.forEach(c => {
+            const rec = c.assignedRecruiter || 'Unassigned';
+            if (!recruiterMap[rec]) recruiterMap[rec] = { sourced: 0, screened: 0, interviewed: 0, shortlisted: 0, offered: 0, joined: 0, other: 0 };
+            const s = c.status || '';
+            if (s === 'Sourced') recruiterMap[rec].sourced++;
+            else if (s === 'Screened') recruiterMap[rec].screened++;
+            else if (s === 'Interviewed' || s === 'Interview Scheduled') recruiterMap[rec].interviewed++;
+            else if (s === 'Shortlisted') recruiterMap[rec].shortlisted++;
+            else if (s === 'Offered' || s === 'Offer Accepted') recruiterMap[rec].offered++;
+            else if (s === 'Joined' || s === 'Hired') recruiterMap[rec].joined++;
+            else recruiterMap[rec].other++;
+        });
+
+        const names = Object.keys(recruiterMap).sort();
+        if (!names.length) {
+            productivityTbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">No candidate data yet.</td></tr>';
+        } else {
+            productivityTbody.innerHTML = names.map(rec => {
+                const m = recruiterMap[rec];
+                const total = Object.values(m).reduce((s, v) => s + v, 0);
+                const convRate = total > 0 ? Math.round((m.joined / total) * 100) : 0;
+                return `<tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px 12px; font-weight: 600;">${escapeHTML(rec)}</td>
+                    <td style="padding: 10px 8px; text-align: center;">${m.sourced}</td>
+                    <td style="padding: 10px 8px; text-align: center;">${m.screened}</td>
+                    <td style="padding: 10px 8px; text-align: center;">${m.interviewed}</td>
+                    <td style="padding: 10px 8px; text-align: center;">${m.shortlisted}</td>
+                    <td style="padding: 10px 8px; text-align: center; color: var(--amber);">${m.offered}</td>
+                    <td style="padding: 10px 8px; text-align: center; color: var(--green); font-weight: 700;">${m.joined}</td>
+                    <td style="padding: 10px 8px; text-align: center; color: var(--red);">${m.other}</td>
+                    <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: ${convRate >= 50 ? 'var(--green)' : 'var(--amber)'};">${convRate}%</td>
+                </tr>`;
+            }).join('');
+        }
+    }
+}
+
+// ───── Analytics Sub-Tab Switcher ─────
+function switchAnalyticsSubTab(subTab) {
+    const subViews = ['funnel', 'recruiter', 'source', 'aging', 'omtl'];
+    subViews.forEach(v => {
+        const container = document.getElementById(`ana-subview-${v}`);
+        const btn = document.getElementById(`btn-ana-subview-${v}`);
+        if (container) container.style.display = v === subTab ? '' : 'none';
+        if (btn) btn.classList.toggle('active', v === subTab);
+    });
+
+    // Draw sub-tab specific charts
+    if (subTab === 'recruiter') { drawRecruiterPerformanceChart(); drawRequestersChart(loadTickets()); }
+    else if (subTab === 'source') { drawSourceHiresChart(); refreshAnalytics(); }
+    else if (subTab === 'aging') { drawRequisitionAgingChart(); drawCostChart(loadTickets()); }
+    else if (subTab === 'omtl') { drawTrendChart(loadTickets()); drawDepartmentChart(loadTickets()); }
+    else if (subTab === 'funnel') drawPipelineChart(loadTickets());
+}
+
+function drawRecruiterPerformanceChart() {
+    const canvas = document.getElementById('chart-recruiter-performance');
+    if (!canvas) return;
+    if (window.chartRecruiterPerf) { window.chartRecruiterPerf.destroy(); window.chartRecruiterPerf = null; }
+
+    const tickets = loadTickets();
+    const recruiterMap = {};
+    tickets.forEach(t => {
+        const rec = t.assignedRecruiter || 'Unassigned';
+        if (!recruiterMap[rec]) recruiterMap[rec] = { sourced: 0, offered: 0, joined: 0 };
+        (t.candidates || []).forEach(c => {
+            recruiterMap[rec].sourced++;
+            if (['Offered','Offer Accepted','Joined','Hired'].includes(c.status)) recruiterMap[rec].offered++;
+            if (['Joined','Hired'].includes(c.status)) recruiterMap[rec].joined++;
+        });
+    });
+
+    const labels = Object.keys(recruiterMap).filter(r => r !== 'Unassigned').sort();
+    if (!labels.length) return;
+
+    const tc = getChartThemeColors();
+    window.chartRecruiterPerf = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Sourced', data: labels.map(r => recruiterMap[r].sourced), backgroundColor: 'rgba(59,130,246,0.55)', borderColor: '#3B82F6', borderWidth: 1 },
+                { label: 'Offered', data: labels.map(r => recruiterMap[r].offered), backgroundColor: 'rgba(245,158,11,0.55)', borderColor: '#F59E0B', borderWidth: 1 },
+                { label: 'Joined', data: labels.map(r => recruiterMap[r].joined), backgroundColor: 'rgba(16,185,129,0.55)', borderColor: '#10B981', borderWidth: 1 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: tc.labelColor, font: { family: 'Inter', size: 11 } } }, tooltip: { backgroundColor: tc.tooltipBg, titleColor: tc.tooltipTitle, bodyColor: tc.tooltipBody, borderColor: tc.tooltipBorder, borderWidth: 1, cornerRadius: 8 } },
+            scales: { x: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor } }, y: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor, stepSize: 1 } } }
+        }
+    });
+}
+
+function drawSourceHiresChart() {
+    const canvas = document.getElementById('chart-source-hires');
+    if (!canvas) return;
+    if (window.chartSourceHires) { window.chartSourceHires.destroy(); window.chartSourceHires = null; }
+
+    const tickets = loadTickets();
+    const sourceMap = {};
+    tickets.forEach(t => {
+        (t.candidates || []).forEach(c => {
+            const s = c.source || 'Other';
+            if (!sourceMap[s]) sourceMap[s] = { total: 0, joined: 0 };
+            sourceMap[s].total++;
+            if (['Joined','Hired'].includes(c.status)) sourceMap[s].joined++;
+        });
+    });
+
+    const labels = Object.keys(sourceMap).sort((a, b) => sourceMap[b].total - sourceMap[a].total);
+    if (!labels.length) return;
+
+    const tc = getChartThemeColors();
+    window.chartSourceHires = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Total Sourced', data: labels.map(l => sourceMap[l].total), backgroundColor: 'rgba(108,99,255,0.55)', borderColor: '#6C63FF', borderWidth: 1 },
+                { label: 'Joined', data: labels.map(l => sourceMap[l].joined), backgroundColor: 'rgba(16,185,129,0.55)', borderColor: '#10B981', borderWidth: 1 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: tc.labelColor, font: { family: 'Inter', size: 11 } } }, tooltip: { backgroundColor: tc.tooltipBg, titleColor: tc.tooltipTitle, bodyColor: tc.tooltipBody, borderColor: tc.tooltipBorder, borderWidth: 1, cornerRadius: 8 } },
+            scales: { x: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor } }, y: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor, stepSize: 1 } } }
+        }
+    });
+}
+
+function drawRequisitionAgingChart() {
+    const canvas = document.getElementById('chart-requisition-aging');
+    if (!canvas) return;
+    if (window.chartReqAging) { window.chartReqAging.destroy(); window.chartReqAging = null; }
+
+    const tickets = loadTickets().filter(t => t.status !== 'Completed' && t.status !== 'Cancelled');
+    const today = new Date();
+    const buckets = { '0-15d': 0, '16-30d': 0, '31-60d': 0, '61-90d': 0, '>90d': 0 };
+    tickets.forEach(t => {
+        if (!t.createdAt) return;
+        const days = Math.floor((today - new Date(t.createdAt)) / (1000 * 60 * 60 * 24));
+        if (days <= 15) buckets['0-15d']++;
+        else if (days <= 30) buckets['16-30d']++;
+        else if (days <= 60) buckets['31-60d']++;
+        else if (days <= 90) buckets['61-90d']++;
+        else buckets['>90d']++;
+    });
+
+    const tc = getChartThemeColors();
+    window.chartReqAging = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(buckets),
+            datasets: [{ label: 'Open Requisitions', data: Object.values(buckets), backgroundColor: ['rgba(16,185,129,0.6)','rgba(245,158,11,0.6)','rgba(237,25,36,0.6)','rgba(139,92,246,0.6)','rgba(239,68,68,0.6)'], borderWidth: 1, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: tc.tooltipBg, titleColor: tc.tooltipTitle, bodyColor: tc.tooltipBody, borderColor: tc.tooltipBorder, borderWidth: 1, cornerRadius: 8 } },
+            scales: { x: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor } }, y: { grid: { color: tc.gridColor }, ticks: { color: tc.labelColor, stepSize: 1 } } }
+        }
+    });
+}
+
+// drawOMTLChart removed — omtl tab now uses existing drawTrendChart and drawDepartmentChart functions
 
 // ───── Department Filter ─────
 function populateDeptFilter() {
@@ -1689,18 +2330,35 @@ function exportToExcel() {
             if (t.candidates && t.candidates.length > 0) {
                 t.candidates.forEach(c => {
                     candidateRows.push({
-                        'Ticket ID': t.ticketId,
-                        'Candidate ID': c.id,
-                        'First Name': c.firstName,
-                        'Last Name': c.lastName,
-                        'Email': c.email,
-                        'Phone': c.phone,
-                        'Source': c.source || 'Other',
-                        'Expected Salary (PHP)': c.expectedSalary || 0,
-                        'Expected DOJ': c.expectedDOJ ? fmtDate(c.expectedDOJ) : '',
-                        'Address': c.address || '',
-                        'Status': c.status,
-                        'Created At': c.createdAt ? fmtDateTime(c.createdAt) : ''
+                        'Ticket ID':             t.ticketId,
+                        'Department':            t.department,
+                        'Project':               t.project,
+                        'Candidate ID':          c.id,
+                        'First Name':            c.firstName,
+                        'Last Name':             c.lastName,
+                        'Gender':                c.gender || '',
+                        'Email':                 c.email,
+                        'Phone':                 c.phone,
+                        'Alt Phone':             c.altPhone || '',
+                        'Location':              c.location || '',
+                        'Address':               c.address || '',
+                        'Source':                c.source || 'Other',
+                        'Current Company':       c.currentCompany || '',
+                        'Current Designation':   c.currentDesignation || '',
+                        'Total Experience (Yrs)':c.totalExperience || '',
+                        'Relevant Exp (Yrs)':    c.relevantExperience || '',
+                        'Current Salary':        c.currentSalary || 0,
+                        'Expected Salary':       c.expectedSalary || 0,
+                        'Offered Salary':        c.offeredSalary || 0,
+                        'Notice Period':         c.noticePeriod || '',
+                        'Preferred Shift':       c.preferredShift || '',
+                        'Joining Date':          c.joiningDate ? fmtDate(c.joiningDate) : '',
+                        'Assigned Recruiter':    c.assignedRecruiter || '',
+                        'Resume File':           c.resumeName || '',
+                        'Status':                c.status,
+                        'Remarks':               c.remarks || '',
+                        'Created At':            c.createdAt ? fmtDateTime(c.createdAt) : '',
+                        'Last Updated':          c.lastUpdatedDate ? fmtDateTime(c.lastUpdatedDate) : ''
                     });
                 });
             }
@@ -1709,7 +2367,12 @@ function exportToExcel() {
         if (candidateRows.length > 0) {
             const ws3 = XLSX.utils.json_to_sheet(candidateRows);
             ws3['!cols'] = [
-                {wch:18},{wch:18},{wch:15},{wch:15},{wch:25},{wch:15},{wch:18},{wch:20},{wch:15},{wch:30},{wch:15},{wch:20}
+                {wch:18},{wch:14},{wch:20},{wch:22},{wch:14},{wch:14},{wch:8},
+                {wch:26},{wch:14},{wch:14},{wch:16},{wch:25},{wch:16},
+                {wch:20},{wch:20},{wch:12},{wch:12},
+                {wch:16},{wch:16},{wch:16},
+                {wch:14},{wch:14},{wch:14},{wch:20},{wch:22},
+                {wch:15},{wch:28},{wch:20},{wch:20}
             ];
             XLSX.utils.book_append_sheet(wb, ws3, 'Candidates');
         }
