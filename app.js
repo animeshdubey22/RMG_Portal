@@ -4861,7 +4861,7 @@ function downloadPPTReport() {
         .map(src => ({ source: src, count: candSourceCounts[src] }))
         .sort((a, b) => b.count - a.count);
 
-    const tableRows = [];
+    tableRows = [];
     tableRows.push([
         { text: 'Sourcing Channel', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' }, fontFace: 'Arial', fontSize: 10 } },
         { text: 'Candidates', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' }, fontFace: 'Arial', fontSize: 10, align: 'center' } },
