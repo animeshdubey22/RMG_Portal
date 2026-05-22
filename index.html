@@ -437,33 +437,149 @@
         </div>
 
         <!-- Table -->
-        <div class="table-wrapper glass-card">
-            <div class="table-scroll">
-                <table id="hiring-table">
-                    <thead>
-                        <tr>
-                            <th>Ticket ID</th>
-                            <th>Date</th>
-                            <th>Department</th>
-                            <th>Project</th>
-                            <th>Requested By</th>
-                            <th>Recruiter</th>
-                            <th>Required HC</th>
-                            <th>Hired</th>
-                            <th>Pending</th>
-                            <th>Stage</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="hiring-table-body"></tbody>
-                </table>
+        <!-- Table Split Layout -->
+        <div class="hiring-split-layout">
+            <div class="table-wrapper glass-card">
+                <div class="table-scroll">
+                    <table id="hiring-table">
+                        <thead>
+                            <tr>
+                                <th>Ticket ID</th>
+                                <th>Date</th>
+                                <th>Department</th>
+                                <th>Project</th>
+                                <th>Requested By</th>
+                                <th>Recruiter</th>
+                                <th>Required HC</th>
+                                <th>Hired</th>
+                                <th>Pending</th>
+                                <th>Stage</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hiring-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="hiring-empty" class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <h3>No Hiring Requests Yet</h3>
+                    <p>Requests raised by TLs and OMs will appear here.</p>
+                    <button class="btn-outline" onclick="navigate('requester')">Raise First Request →</button>
+                </div>
             </div>
-            <div id="hiring-empty" class="empty-state">
-                <div class="empty-icon">📋</div>
-                <h3>No Hiring Requests Yet</h3>
-                <p>Requests raised by TLs and OMs will appear here.</p>
-                <button class="btn-outline" onclick="navigate('requester')">Raise First Request →</button>
+
+            <!-- Candidate Management Side Panel -->
+            <div id="candidate-panel" class="candidate-panel glass-card hidden">
+                <!-- Select ticket placeholder -->
+                <div class="candidate-placeholder" id="candidate-placeholder">
+                    <div style="font-size: 2.2rem; margin-bottom: 12px; opacity: 0.6; text-align: center;">👥</div>
+                    <h3 style="text-align: center; margin-bottom: 8px; font-size: 0.95rem;">Candidate Database & RMG</h3>
+                    <p style="text-align: center; font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; margin: 0;">Select a ticket row on the left to view candidate records, manage hires, and track recruitment pipelines.</p>
+                </div>
+                
+                <!-- Active Candidate Panel -->
+                <div class="candidate-panel-active hidden" id="candidate-panel-active">
+                    <div class="candidate-panel-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <div>
+                            <h3 style="font-size: 0.95rem; color: var(--text); margin-bottom: 2px;" id="cand-panel-ticket-id">RMG-2026-0001</h3>
+                            <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;" id="cand-panel-ticket-title">Operations - Project Alpha</span>
+                        </div>
+                        <button class="btn-close-panel" onclick="closeCandidatePanel()" style="background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; line-height: 1; padding: 0 4px;" title="Close Panel">&times;</button>
+                    </div>
+
+                    <!-- Funnel Overview -->
+                    <div class="candidate-panel-funnel" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px; text-align: center; background: rgba(0,0,0,0.15); padding: 8px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                        <div><div style="font-size: 0.68rem; color: var(--text-dim); margin-bottom: 2px;">Int</div><strong style="font-size: 0.85rem; color: var(--blue);" id="cand-stat-int">0</strong></div>
+                        <div><div style="font-size: 0.68rem; color: var(--text-dim); margin-bottom: 2px;">Off</div><strong style="font-size: 0.85rem; color: var(--amber);" id="cand-stat-off">0</strong></div>
+                        <div><div style="font-size: 0.68rem; color: var(--text-dim); margin-bottom: 2px;">Acc</div><strong style="font-size: 0.85rem; color: var(--purple);" id="cand-stat-acc">0</strong></div>
+                        <div><div style="font-size: 0.68rem; color: var(--text-dim); margin-bottom: 2px;">Hir</div><strong style="font-size: 0.85rem; color: var(--green);" id="cand-stat-hir">0</strong></div>
+                        <div><div style="font-size: 0.68rem; color: var(--text-dim); margin-bottom: 2px;">Rej</div><strong style="font-size: 0.85rem; color: var(--red);" id="cand-stat-rej">0</strong></div>
+                    </div>
+
+                    <!-- Add Candidate Toggle Button -->
+                    <button class="btn-primary btn-block" style="font-size: 0.78rem; padding: 8px 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="toggleCandidateForm(true)">
+                        <span>➕</span> Add Candidate Record
+                    </button>
+
+                    <!-- Candidate Form (Hidden by default) -->
+                    <form id="candidate-form" class="hidden" onsubmit="saveCandidate(event)" style="background: rgba(255,255,255,0.015); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;">
+                        <input type="hidden" id="cand-form-id">
+                        
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">First Name *</label>
+                                <input type="text" id="cand-first-name" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Last Name *</label>
+                                <input type="text" id="cand-last-name" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Email ID *</label>
+                                <input type="email" id="cand-email" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Phone Number *</label>
+                                <input type="text" id="cand-phone" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Source</label>
+                                <select id="cand-source" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                    <option>LinkedIn</option>
+                                    <option>JobStreet</option>
+                                    <option>Employee Referral</option>
+                                    <option>Direct Applicant</option>
+                                    <option>Consultant</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Expected Salary (₱) *</label>
+                                <input type="number" id="cand-salary" min="0" value="0" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Address</label>
+                            <input type="text" id="cand-address" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text);">
+                        </div>
+
+                        <div style="display: flex; gap: 6px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Expected Joining Date</label>
+                                <input type="date" id="cand-doj" style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.66rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Candidate Status *</label>
+                                <select id="cand-status" required style="width: 100%; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); height: 28px;">
+                                    <option>Interviewing</option>
+                                    <option>Offered</option>
+                                    <option>Accepted</option>
+                                    <option>Hired</option>
+                                    <option>Rejected</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px;">
+                            <button type="button" class="btn-ghost" onclick="toggleCandidateForm(false)" style="padding: 5px 10px; font-size: 0.74rem; border-color: rgba(255,255,255,0.1); height: auto; margin: 0;">Cancel</button>
+                            <button type="submit" class="btn-primary" style="padding: 5px 10px; font-size: 0.74rem; height: auto; margin: 0;">Save Candidate</button>
+                        </div>
+                    </form>
+
+                    <!-- Candidate List -->
+                    <h4 style="font-size: 0.76rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; letter-spacing: 0.5px; border-bottom: 1px dashed var(--border); padding-bottom: 4px;">Candidates Registered</h4>
+                    <div id="candidate-list" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Dynamically filled with candidate cards -->
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -567,6 +683,33 @@
                     <div class="stat-data">
                         <span class="stat-num" id="ana-kpi-oth-ratio">1:1</span>
                         <span class="stat-lbl">Offer-to-Hire Ratio</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--purple)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M3 21c0-4.418 3.582-8 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 11v6m-3-3h6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-cand-total">0</span>
+                        <span class="stat-lbl">Total Candidates Processed</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--cyan)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-cand-active">0</span>
+                        <span class="stat-lbl">Active Candidates</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap" style="--sc-clr:var(--green)">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="ana-kpi-cand-conv">0%</span>
+                        <span class="stat-lbl">Candidate Conversion Rate</span>
                     </div>
                 </div>
             </div>

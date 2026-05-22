@@ -94,6 +94,10 @@ function loadTickets() {
                 t.acceptedCount = t.hiredCount || 0;
                 changed = true;
             }
+            if (!t.candidates) {
+                t.candidates = [];
+                changed = true;
+            }
         });
         if (changed) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
@@ -565,6 +569,7 @@ function submitRequest(e) {
         recruitmentCost: 0,
         assignedRecruiter: 'Unassigned',
         remarks:      '',
+        candidates:   [],
         history: [
             { date: new Date().toISOString(), action: 'Ticket Created', by: 'Requester' }
         ]
@@ -638,6 +643,23 @@ function renderRequesterTickets() {
     container.innerHTML = tickets.map(t => {
         const pct = Math.min(100, Math.round((t.hiredCount / t.requiredHC) * 100));
         const statusClass = t.status.toLowerCase().replace(/\s+/g, '-');
+        
+        const candidates = t.candidates || [];
+        const countInt = candidates.filter(c => c.status === 'Interviewing').length;
+        const countOff = candidates.filter(c => c.status === 'Offered').length;
+        const countAcc = candidates.filter(c => c.status === 'Accepted').length;
+        const countHir = candidates.filter(c => c.status === 'Hired').length;
+        const countRej = candidates.filter(c => c.status === 'Rejected').length;
+
+        const funnelHTML = `
+        <div class="tc-candidate-funnel">
+            <span class="funnel-item">Int: <b>${countInt}</b></span>
+            <span class="funnel-item">Off: <b>${countOff}</b></span>
+            <span class="funnel-item">Acc: <b>${countAcc}</b></span>
+            <span class="funnel-item">Hir: <b>${countHir}</b></span>
+            <span class="funnel-item">Rej: <b>${countRej}</b></span>
+        </div>`;
+
         return `
         <div class="ticket-card status-${statusClass}" onclick="showTicketDetail('${t.ticketId}')">
             <div class="tc-header">
@@ -654,6 +676,7 @@ function renderRequesterTickets() {
             <div class="progress-mini">
                 <div class="progress-mini-fill" style="width:${pct}%"></div>
             </div>
+            ${funnelHTML}
             ${renderJourneyStepsHTML(t)}
             <div class="tc-remarks-box">
                 <div class="remarks-header">
@@ -668,6 +691,339 @@ function renderRequesterTickets() {
 
 // ───── Hiring Dashboard: Table ─────
 let currentHiringScope = 'all';
+let activeCandidateTicketId = null;
+const expandedCandidateIds = new Set();
+
+function recalculateTicketCounts(t) {
+    if (t.candidates && t.candidates.length > 0) {
+        t.hiredCount = t.candidates.filter(c => c.status === 'Hired').length;
+        t.acceptedCount = t.candidates.filter(c => c.status === 'Accepted' || c.status === 'Hired').length;
+        t.offeredCount = t.candidates.filter(c => c.status === 'Offered' || c.status === 'Accepted' || c.status === 'Hired').length;
+    }
+}
+
+function selectTicketForCandidates(ticketId, rowEl) {
+    activeCandidateTicketId = ticketId;
+
+    const panel = document.getElementById('candidate-panel');
+    const placeholder = document.getElementById('candidate-placeholder');
+    const activePanel = document.getElementById('candidate-panel-active');
+
+    if (panel) panel.classList.remove('hidden');
+    if (placeholder) placeholder.classList.add('hidden');
+    if (activePanel) activePanel.classList.remove('hidden');
+
+    const tickets = loadTickets();
+    const ticket = tickets.find(x => x.ticketId === ticketId);
+    if (ticket) {
+        document.getElementById('cand-panel-ticket-id').textContent = ticket.ticketId;
+        document.getElementById('cand-panel-ticket-title').textContent = `${ticket.department} — ${ticket.project}`;
+    }
+
+    document.querySelectorAll('#hiring-table-body tr').forEach(tr => {
+        tr.classList.remove('selected-row');
+    });
+    if (rowEl) {
+        rowEl.classList.add('selected-row');
+    } else {
+        const tr = document.querySelector(`#hiring-table-body tr[data-ticket-id="${ticketId}"]`);
+        if (tr) tr.classList.add('selected-row');
+    }
+
+    renderCandidates(ticketId);
+    toggleCandidateForm(false);
+}
+
+function closeCandidatePanel() {
+    activeCandidateTicketId = null;
+    const panel = document.getElementById('candidate-panel');
+    const placeholder = document.getElementById('candidate-placeholder');
+    const activePanel = document.getElementById('candidate-panel-active');
+
+    if (panel) panel.classList.add('hidden');
+    if (placeholder) placeholder.classList.remove('hidden');
+    if (activePanel) activePanel.classList.add('hidden');
+
+    document.querySelectorAll('#hiring-table-body tr').forEach(tr => {
+        tr.classList.remove('selected-row');
+    });
+}
+
+function renderCandidates(ticketId) {
+    const listContainer = document.getElementById('candidate-list');
+    if (!listContainer) return;
+
+    const tickets = loadTickets();
+    const t = tickets.find(x => x.ticketId === ticketId);
+    if (!t) {
+        closeCandidatePanel();
+        return;
+    }
+
+    const candidates = t.candidates || [];
+    const countInt = candidates.filter(c => c.status === 'Interviewing').length;
+    const countOff = candidates.filter(c => c.status === 'Offered').length;
+    const countAcc = candidates.filter(c => c.status === 'Accepted').length;
+    const countHir = candidates.filter(c => c.status === 'Hired').length;
+    const countRej = candidates.filter(c => c.status === 'Rejected').length;
+
+    document.getElementById('cand-stat-int').textContent = countInt;
+    document.getElementById('cand-stat-off').textContent = countOff;
+    document.getElementById('cand-stat-acc').textContent = countAcc;
+    document.getElementById('cand-stat-hir').textContent = countHir;
+    document.getElementById('cand-stat-rej').textContent = countRej;
+
+    if (candidates.length === 0) {
+        listContainer.innerHTML = `
+            <div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.8rem;">
+                No candidates registered for this ticket yet.
+            </div>`;
+        return;
+    }
+
+    listContainer.innerHTML = candidates.map(c => {
+        const initials = `${c.firstName.charAt(0)}${c.lastName.charAt(0)}`.toUpperCase();
+        const candId = c.id;
+        const isExpanded = expandedCandidateIds.has(candId);
+        const drawerClass = isExpanded ? 'candidate-details-drawer' : 'candidate-details-drawer hidden';
+        const chevron = isExpanded ? '▼' : '▶';
+
+        return `
+        <div class="candidate-card" data-cand-id="${candId}" onclick="toggleCandidateExpand('${candId}', event)">
+            <div class="candidate-card-header">
+                <div class="candidate-avatar">${initials}</div>
+                <div class="candidate-info">
+                    <div class="candidate-name">${escapeHTML(c.firstName)} ${escapeHTML(c.lastName)}</div>
+                    <div class="candidate-meta-sub">
+                        <span>${escapeHTML(c.source || 'Other')}</span> &bull; 
+                        <span>DOJ: ${c.expectedDOJ ? fmtDate(c.expectedDOJ) : 'TBD'}</span>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                    <span class="cand-badge ${c.status.toLowerCase()}">${c.status}</span>
+                    <span class="expand-chevron" style="font-size: 0.6rem; color: var(--text-muted);">${chevron}</span>
+                </div>
+            </div>
+            
+            <div class="${drawerClass}" id="cand-drawer-${candId}">
+                <div class="cand-detail-item">
+                    <strong>Email:</strong>
+                    <span>${escapeHTML(c.email)}</span>
+                </div>
+                <div class="cand-detail-item">
+                    <strong>Phone:</strong>
+                    <span>${escapeHTML(c.phone)}</span>
+                </div>
+                <div class="cand-detail-item">
+                    <strong>Expected Salary:</strong>
+                    <span>₱${parseFloat(c.expectedSalary || 0).toLocaleString()}</span>
+                </div>
+                <div class="cand-detail-item">
+                    <strong>Address:</strong>
+                    <span>${escapeHTML(c.address || '—')}</span>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;">
+                    <button class="cand-action-btn" onclick="event.stopPropagation(); editCandidate('${candId}')" title="Edit Candidate">✏️ Edit</button>
+                    <button class="cand-action-btn delete" onclick="event.stopPropagation(); deleteCandidate('${candId}')" title="Delete Candidate">🗑️ Delete</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function toggleCandidateExpand(candId, event) {
+    if (event.target.closest('.cand-action-btn') || event.target.closest('button')) {
+        return;
+    }
+    const drawer = document.getElementById(`cand-drawer-${candId}`);
+    const card = drawer?.closest('.candidate-card');
+    if (!drawer || !card) return;
+
+    const chevron = card.querySelector('.expand-chevron');
+
+    if (expandedCandidateIds.has(candId)) {
+        expandedCandidateIds.delete(candId);
+        drawer.classList.add('hidden');
+        if (chevron) chevron.textContent = '▶';
+    } else {
+        expandedCandidateIds.add(candId);
+        drawer.classList.remove('hidden');
+        if (chevron) chevron.textContent = '▼';
+    }
+}
+
+function toggleCandidateForm(show) {
+    const form = document.getElementById('candidate-form');
+    if (!form) return;
+    if (show) {
+        form.classList.remove('hidden');
+        document.getElementById('cand-form-id').value = '';
+        document.getElementById('cand-first-name').value = '';
+        document.getElementById('cand-last-name').value = '';
+        document.getElementById('cand-email').value = '';
+        document.getElementById('cand-phone').value = '';
+        document.getElementById('cand-source').value = 'LinkedIn';
+        document.getElementById('cand-salary').value = '0';
+        document.getElementById('cand-address').value = '';
+        document.getElementById('cand-doj').value = '';
+        document.getElementById('cand-status').value = 'Interviewing';
+    } else {
+        form.classList.add('hidden');
+        form.reset();
+    }
+}
+
+function saveCandidate(e) {
+    e.preventDefault();
+    if (!activeCandidateTicketId) return;
+
+    const tickets = loadTickets();
+    const tIdx = tickets.findIndex(x => x.ticketId === activeCandidateTicketId);
+    if (tIdx === -1) return;
+
+    const ticket = tickets[tIdx];
+    ticket.candidates = ticket.candidates || [];
+
+    const candId = document.getElementById('cand-form-id').value;
+    const firstName = document.getElementById('cand-first-name').value.trim();
+    const lastName = document.getElementById('cand-last-name').value.trim();
+    const email = document.getElementById('cand-email').value.trim();
+    const phone = document.getElementById('cand-phone').value.trim();
+    const source = document.getElementById('cand-source').value;
+    const expectedSalary = parseFloat(document.getElementById('cand-salary').value) || 0;
+    const address = document.getElementById('cand-address').value.trim();
+    const expectedDOJ = document.getElementById('cand-doj').value;
+    const status = document.getElementById('cand-status').value;
+
+    const user = getActiveUser();
+    const updaterName = user ? user.name : 'System';
+
+    if (candId) {
+        const cIdx = ticket.candidates.findIndex(c => c.id === candId);
+        if (cIdx !== -1) {
+            const oldCand = ticket.candidates[cIdx];
+            const changes = [];
+            if (oldCand.status !== status) {
+                changes.push(`Candidate ${firstName} status changed to ${status}`);
+            }
+            
+            ticket.candidates[cIdx] = {
+                ...oldCand,
+                firstName,
+                lastName,
+                email,
+                phone,
+                source,
+                expectedSalary,
+                address,
+                expectedDOJ,
+                status
+            };
+
+            ticket.history = ticket.history || [];
+            ticket.history.push({
+                date: new Date().toISOString(),
+                action: changes.length ? changes.join(', ') : `Candidate ${firstName} details updated`,
+                by: updaterName
+            });
+            showToast('Candidate Updated', `Successfully updated candidate ${firstName} ${lastName}`);
+        }
+    } else {
+        const newCand = {
+            id: 'CAND-' + Date.now(),
+            firstName,
+            lastName,
+            email,
+            phone,
+            source,
+            expectedSalary,
+            address,
+            expectedDOJ,
+            status,
+            createdAt: new Date().toISOString()
+        };
+        ticket.candidates.push(newCand);
+        ticket.history = ticket.history || [];
+        ticket.history.push({
+            date: new Date().toISOString(),
+            action: `Candidate ${firstName} ${lastName} added (Status: ${status})`,
+            by: updaterName
+        });
+        showToast('Candidate Added', `Successfully added candidate ${firstName} ${lastName}`);
+    }
+
+    recalculateTicketCounts(ticket);
+    ticket.updatedAt = new Date().toISOString();
+
+    saveTickets(tickets);
+    toggleCandidateForm(false);
+    
+    renderCandidates(activeCandidateTicketId);
+    renderHiringTickets();
+}
+
+function editCandidate(candId) {
+    if (!activeCandidateTicketId) return;
+    const tickets = loadTickets();
+    const ticket = tickets.find(x => x.ticketId === activeCandidateTicketId);
+    if (!ticket) return;
+
+    const cand = (ticket.candidates || []).find(c => c.id === candId);
+    if (!cand) return;
+
+    const form = document.getElementById('candidate-form');
+    if (form) form.classList.remove('hidden');
+
+    document.getElementById('cand-form-id').value = cand.id;
+    document.getElementById('cand-first-name').value = cand.firstName;
+    document.getElementById('cand-last-name').value = cand.lastName;
+    document.getElementById('cand-email').value = cand.email;
+    document.getElementById('cand-phone').value = cand.phone;
+    document.getElementById('cand-source').value = cand.source || 'LinkedIn';
+    document.getElementById('cand-salary').value = cand.expectedSalary || 0;
+    document.getElementById('cand-address').value = cand.address || '';
+    document.getElementById('cand-doj').value = cand.expectedDOJ || '';
+    document.getElementById('cand-status').value = cand.status;
+    
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function deleteCandidate(candId) {
+    if (!activeCandidateTicketId) return;
+    if (!confirm('Are you sure you want to delete this candidate record? This will also affect ticket headcount calculations.')) return;
+
+    const tickets = loadTickets();
+    const tIdx = tickets.findIndex(x => x.ticketId === activeCandidateTicketId);
+    if (tIdx === -1) return;
+
+    const ticket = tickets[tIdx];
+    ticket.candidates = ticket.candidates || [];
+    
+    const candIdx = ticket.candidates.findIndex(c => c.id === candId);
+    if (candIdx === -1) return;
+
+    const cand = ticket.candidates[candIdx];
+    ticket.candidates.splice(candIdx, 1);
+
+    const user = getActiveUser();
+    const updaterName = user ? user.name : 'System';
+
+    ticket.history = ticket.history || [];
+    ticket.history.push({
+        date: new Date().toISOString(),
+        action: `Candidate ${cand.firstName} ${cand.lastName} removed`,
+        by: updaterName
+    });
+
+    recalculateTicketCounts(ticket);
+    ticket.updatedAt = new Date().toISOString();
+
+    saveTickets(tickets);
+    showToast('Candidate Removed', `Candidate ${cand.firstName} ${cand.lastName} has been deleted.`);
+    
+    renderCandidates(activeCandidateTicketId);
+    renderHiringTickets();
+}
 
 function changeHiringScope(scope) {
     currentHiringScope = scope;
@@ -762,14 +1118,17 @@ function renderHiringTickets() {
             recruiterCell = `<span style="font-weight:600;color:var(--text-dim)">${ticketRecruiter}</span>`;
         } else {
             if (user && user.role === 'Recruiter') {
-                recruiterCell = `<button class="btn-table" onclick="claimTicket('${t.ticketId}')" style="background:var(--blue);border-color:var(--blue);font-size:0.72rem;padding:4px 8px;margin:0;">Claim</button>`;
+                recruiterCell = `<button class="btn-table" onclick="event.stopPropagation(); claimTicket('${t.ticketId}')" style="background:var(--blue);border-color:var(--blue);font-size:0.72rem;padding:4px 8px;margin:0;">Claim</button>`;
             } else {
                 recruiterCell = `<span style="color:var(--text-muted);font-style:italic">Unassigned</span>`;
             }
         }
 
+        const isSelected = t.ticketId === activeCandidateTicketId;
+        const rowClass = isSelected ? 'selected-row' : '';
+
         return `
-        <tr>
+        <tr class="${rowClass}" data-ticket-id="${t.ticketId}" onclick="selectTicketForCandidates('${t.ticketId}', this)">
             <td><strong style="color:var(--accent)">${t.ticketId}</strong></td>
             <td>${fmtDate(t.createdAt)}</td>
             <td>${t.department}</td>
@@ -784,9 +1143,9 @@ function renderHiringTickets() {
             <td><span style="color:var(--amber);font-weight:600">${pending}</span></td>
             <td>${t.stage || '—'}</td>
             <td><span class="badge ${badgeClass(t.status)}">${t.status}</span></td>
-            <td style="white-space:nowrap">
-                <button class="btn-table" onclick="openUpdateModal('${t.ticketId}')">Update</button>
-                <button class="btn-table-view" onclick="showTicketDetail('${t.ticketId}')">View</button>
+            <td style="white-space:nowrap" onclick="event.stopPropagation()">
+                <button class="btn-table" onclick="event.stopPropagation(); openUpdateModal('${t.ticketId}')">Update</button>
+                <button class="btn-table-view" onclick="event.stopPropagation(); showTicketDetail('${t.ticketId}')">View</button>
             </td>
         </tr>`;
     }).join('');
@@ -878,10 +1237,31 @@ function openUpdateModal(ticketId) {
     `;
     document.getElementById('upd-stage').value = t.stage || 'Sourcing';
     document.getElementById('upd-status').value = t.status;
-    document.getElementById('upd-hired').value = t.hiredCount;
-    document.getElementById('upd-hired').max = t.requiredHC;
-    document.getElementById('upd-offered').value = t.offeredCount || 0;
-    document.getElementById('upd-accepted').value = t.acceptedCount || 0;
+    
+    const hasCandidates = t.candidates && t.candidates.length > 0;
+    const updHiredInput = document.getElementById('upd-hired');
+    const updOfferedInput = document.getElementById('upd-offered');
+    const updAcceptedInput = document.getElementById('upd-accepted');
+
+    if (updHiredInput) {
+        updHiredInput.value = t.hiredCount;
+        updHiredInput.max = t.requiredHC;
+        updHiredInput.disabled = hasCandidates;
+        if (hasCandidates) updHiredInput.setAttribute('title', 'Managed via Candidate Database');
+        else updHiredInput.removeAttribute('title');
+    }
+    if (updOfferedInput) {
+        updOfferedInput.value = t.offeredCount || 0;
+        updOfferedInput.disabled = hasCandidates;
+        if (hasCandidates) updOfferedInput.setAttribute('title', 'Managed via Candidate Database');
+        else updOfferedInput.removeAttribute('title');
+    }
+    if (updAcceptedInput) {
+        updAcceptedInput.value = t.acceptedCount || 0;
+        updAcceptedInput.disabled = hasCandidates;
+        if (hasCandidates) updAcceptedInput.setAttribute('title', 'Managed via Candidate Database');
+        else updAcceptedInput.removeAttribute('title');
+    }
     populateSourcingChannelSelect(t.sourcingChannel || 'Other');
     document.getElementById('custom-channel-container')?.classList.add('hidden');
     const customInput = document.getElementById('upd-channel-custom');
@@ -958,11 +1338,16 @@ function saveUpdate(e) {
     if (idx === -1) return;
 
     const t = tickets[idx];
+    
+    // Recalculate candidates count to be safe
+    recalculateTicketCounts(t);
+    const hasCandidates = t.candidates && t.candidates.length > 0;
+
     const newStage = document.getElementById('upd-stage').value;
     const newStatus = document.getElementById('upd-status').value;
-    const newHired = parseInt(document.getElementById('upd-hired').value, 10) || 0;
-    const newOffered = parseInt(document.getElementById('upd-offered').value, 10) || 0;
-    const newAccepted = parseInt(document.getElementById('upd-accepted').value, 10) || 0;
+    const newHired = hasCandidates ? t.hiredCount : (parseInt(document.getElementById('upd-hired').value, 10) || 0);
+    const newOffered = hasCandidates ? t.offeredCount : (parseInt(document.getElementById('upd-offered').value, 10) || 0);
+    const newAccepted = hasCandidates ? t.acceptedCount : (parseInt(document.getElementById('upd-accepted').value, 10) || 0);
     const newRemarks = document.getElementById('upd-remarks').value.trim();
     let newChannel = document.getElementById('upd-channel').value;
     const customContainer = document.getElementById('custom-channel-container');
@@ -1074,6 +1459,54 @@ function showTicketDetail(ticketId) {
                 </div>
             </div>`).join('');
         html += '</div>';
+    }
+
+    if (t.candidates && t.candidates.length > 0) {
+        html += `<div class="detail-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
+            <div style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                👥 Candidate Pipeline Details
+            </div>`;
+        
+        t.candidates.forEach(c => {
+            const statusBadge = `<span class="cand-badge ${c.status.toLowerCase()}" style="font-size: 0.65rem; padding: 1px 6px;">${c.status}</span>`;
+            const displayDoj = c.expectedDOJ ? fmtDate(c.expectedDOJ) : 'TBD';
+            
+            if (userRole === 'HR Team / Admin' || userRole === 'Recruiter') {
+                html += `
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 8px 10px; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <strong style="color: var(--text); font-size: 0.8rem;">${escapeHTML(c.firstName)} ${escapeHTML(c.lastName)}</strong>
+                        ${statusBadge}
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-dim); display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div><strong>Email:</strong> ${escapeHTML(c.email)}</div>
+                        <div><strong>Phone:</strong> ${escapeHTML(c.phone)}</div>
+                        <div><strong>Expected DOJ:</strong> ${displayDoj}</div>
+                        <div><strong>Source:</strong> ${escapeHTML(c.source || 'Other')}</div>
+                        <div><strong>Salary:</strong> ₱${parseFloat(c.expectedSalary || 0).toLocaleString()}</div>
+                        <div><strong>Address:</strong> ${escapeHTML(c.address || '—')}</div>
+                    </div>
+                </div>`;
+            } else {
+                html += `
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 8px 10px; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <strong style="color: var(--text); font-size: 0.8rem;">${escapeHTML(c.firstName)} ${escapeHTML(c.lastName)}</strong>
+                        ${statusBadge}
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-dim); display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div><strong>Email:</strong> [Confidential]</div>
+                        <div><strong>Phone:</strong> [Confidential]</div>
+                        <div><strong>Expected DOJ:</strong> ${displayDoj}</div>
+                        <div><strong>Source:</strong> ${escapeHTML(c.source || 'Other')}</div>
+                        <div><strong>Salary:</strong> [Confidential]</div>
+                        <div><strong>Address:</strong> [Confidential]</div>
+                    </div>
+                </div>`;
+            }
+        });
+        
+        html += `</div>`;
     }
 
     if (userRole === 'HR Team / Admin' || userRole === 'Recruiter') {
@@ -1247,6 +1680,40 @@ function exportToExcel() {
     const ws2 = XLSX.utils.json_to_sheet(summaryData);
     ws2['!cols'] = [{wch:22},{wch:22}];
     XLSX.utils.book_append_sheet(wb, ws2, 'Summary');
+
+    // Candidates sheet (only for Recruiter / Admin)
+    const userRole = getActiveUserRole();
+    if (userRole === 'HR Team / Admin' || userRole === 'Recruiter') {
+        const candidateRows = [];
+        tickets.forEach(t => {
+            if (t.candidates && t.candidates.length > 0) {
+                t.candidates.forEach(c => {
+                    candidateRows.push({
+                        'Ticket ID': t.ticketId,
+                        'Candidate ID': c.id,
+                        'First Name': c.firstName,
+                        'Last Name': c.lastName,
+                        'Email': c.email,
+                        'Phone': c.phone,
+                        'Source': c.source || 'Other',
+                        'Expected Salary (PHP)': c.expectedSalary || 0,
+                        'Expected DOJ': c.expectedDOJ ? fmtDate(c.expectedDOJ) : '',
+                        'Address': c.address || '',
+                        'Status': c.status,
+                        'Created At': c.createdAt ? fmtDateTime(c.createdAt) : ''
+                    });
+                });
+            }
+        });
+        
+        if (candidateRows.length > 0) {
+            const ws3 = XLSX.utils.json_to_sheet(candidateRows);
+            ws3['!cols'] = [
+                {wch:18},{wch:18},{wch:15},{wch:15},{wch:25},{wch:15},{wch:18},{wch:20},{wch:15},{wch:30},{wch:15},{wch:20}
+            ];
+            XLSX.utils.book_append_sheet(wb, ws3, 'Candidates');
+        }
+    }
 
     const fileName = `RMG_Hiring_Report_${new Date().toISOString().slice(0,10)}.xlsx`;
     XLSX.writeFile(wb, fileName);
@@ -2304,8 +2771,63 @@ function importExcelData(e) {
                 }
             });
             
+            // Candidates sheet integration
+            const candidateSheet = workbook.Sheets['Candidates'];
+            let candMergedCount = 0;
+            let candAddedCount = 0;
+            if (candidateSheet) {
+                const candidateRows = XLSX.utils.sheet_to_json(candidateSheet);
+                candidateRows.forEach(row => {
+                    const ticketId = row['Ticket ID'] || row['ticketId'] || row['ID'];
+                    if (!ticketId) return;
+                    
+                    const ticket = tickets.find(t => t.ticketId === ticketId);
+                    if (!ticket) return; // Ticket must exist to link candidate
+                    
+                    const candId = row['Candidate ID'] || row['candidateId'] || `cand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const expectedSalStr = row['Expected Salary (PHP)'] || row['expectedSalary'] || '0';
+                    const expectedSalary = parseInt(expectedSalStr.toString().replace(/[^0-9]/g, ''), 10) || 0;
+                    
+                    const candObj = {
+                        id: candId,
+                        firstName: row['First Name'] || row['firstName'] || '',
+                        lastName: row['Last Name'] || row['lastName'] || '',
+                        email: row['Email'] || row['email'] || '',
+                        phone: row['Phone'] || row['phone'] || '',
+                        source: row['Source'] || row['source'] || 'Other',
+                        expectedSalary: expectedSalary,
+                        expectedDOJ: row['Expected DOJ'] || row['expectedDOJ'] || '',
+                        address: row['Address'] || row['address'] || '',
+                        status: row['Status'] || row['status'] || 'Interviewing',
+                        createdAt: row['Created At'] || row['createdAt'] || new Date().toISOString()
+                    };
+                    
+                    ticket.candidates = ticket.candidates || [];
+                    const cIdx = ticket.candidates.findIndex(c => c.id === candObj.id);
+                    if (cIdx !== -1) {
+                        ticket.candidates[cIdx] = {
+                            ...ticket.candidates[cIdx],
+                            ...candObj
+                        };
+                        candMergedCount++;
+                    } else {
+                        ticket.candidates.push(candObj);
+                        candAddedCount++;
+                    }
+                });
+            }
+
+            // Recalculate ticket counts for all tickets
+            tickets.forEach(t => {
+                recalculateTicketCounts(t);
+            });
+            
             saveTickets(tickets);
-            showToast('Import Complete', `Excel import successful: Added ${addedCount}, Merged ${mergedCount} tickets.`);
+            let msg = `Excel import successful: Added ${addedCount}, Merged ${mergedCount} tickets.`;
+            if (candidateSheet) {
+                msg += ` (Candidates: Added ${candAddedCount}, Merged ${candMergedCount})`;
+            }
+            showToast('Import Complete', msg);
             
             // Refresh views
             renderHiringTickets();
@@ -2674,6 +3196,34 @@ function refreshAnalytics() {
     }
     const othRatioKpi = document.getElementById('ana-kpi-oth-ratio');
     if (othRatioKpi) othRatioKpi.textContent = othRatioText;
+
+    // Candidate Dashboard KPIs
+    let totalCandidates = 0;
+    let activeCandidates = 0;
+    let hiredCandidates = 0;
+    
+    filtered.forEach(t => {
+        if (t.candidates && t.candidates.length > 0) {
+            t.candidates.forEach(c => {
+                totalCandidates++;
+                if (c.status === 'Interviewing' || c.status === 'Offered' || c.status === 'Accepted') {
+                    activeCandidates++;
+                }
+                if (c.status === 'Hired') {
+                    hiredCandidates++;
+                }
+            });
+        }
+    });
+    
+    const convRate = totalCandidates > 0 ? Math.round((hiredCandidates / totalCandidates) * 100) : 0;
+    
+    const candTotalEl = document.getElementById('ana-kpi-cand-total');
+    if (candTotalEl) candTotalEl.textContent = totalCandidates;
+    const candActiveEl = document.getElementById('ana-kpi-cand-active');
+    if (candActiveEl) candActiveEl.textContent = activeCandidates;
+    const candConvEl = document.getElementById('ana-kpi-cand-conv');
+    if (candConvEl) candConvEl.textContent = `${convRate}%`;
 
     // Sourcing Channel ROI Table
     const channels = loadSourcingChannels();
@@ -4221,6 +4771,154 @@ function downloadPPTReport() {
     
     slide6.addText(insightText, {
         x: 1.25, y: funnelInsightY + 0.45, w: 10.8, h: 0.9,
+        fontSize: 9.5, color: 'E2E8F0', fontFace: 'Arial', lineSpacing: 14
+    });
+
+    // ───── Slide 7: Candidate Pipeline & Sourcing Insights ─────
+    const slide7 = pptx.addSlide();
+    slide7.background = { color: navyBg };
+    slide7.addShape(pptx.ShapeType.rect, { x: 0.0, y: 0.0, w: 13.33, h: 0.06, fill: { color: 'F37021' } });
+    
+    slide7.addText(
+        [
+            { text: 'intele', options: { color: 'FFFFFF', bold: true } },
+            { text: 'gencia', options: { color: 'F37021', bold: true } }
+        ],
+        { x: 11.0, y: 0.4, w: 1.8, h: 0.4, fontSize: 16, fontFace: 'Arial', align: 'right' }
+    );
+    
+    slide7.addText('CANDIDATE PIPELINE & SOURCING INSIGHTS', {
+        x: 0.6, y: 0.4, w: 8.0, h: 0.4,
+        fontSize: 22, bold: true, color: 'FFFFFF',
+        fontFace: 'Arial'
+    });
+    
+    slide7.addText('Detailed breakdown of candidate pipeline statuses and top sourcing channels', {
+        x: 0.6, y: 0.8, w: 8.0, h: 0.3,
+        fontSize: 11, color: textMuted,
+        fontFace: 'Arial'
+    });
+
+    let candTotal = 0;
+    let candInterviewing = 0;
+    let candOffered = 0;
+    let candAccepted = 0;
+    let candHired = 0;
+    let candRejected = 0;
+    const candSourceCounts = {};
+
+    filtered.forEach(t => {
+        if (t.candidates && t.candidates.length > 0) {
+            t.candidates.forEach(c => {
+                candTotal++;
+                if (c.status === 'Interviewing') candInterviewing++;
+                else if (c.status === 'Offered') candOffered++;
+                else if (c.status === 'Accepted') candAccepted++;
+                else if (c.status === 'Hired') candHired++;
+                else if (c.status === 'Rejected') candRejected++;
+
+                const src = c.source || 'Other';
+                candSourceCounts[src] = (candSourceCounts[src] || 0) + 1;
+            });
+        }
+    });
+
+    const candActive = candInterviewing + candOffered + candAccepted;
+
+    const kpis = [
+        { title: 'TOTAL APPLICANTS', val: candTotal, color: '3B82F6', x: 0.6, y: 1.5 },
+        { title: 'ACTIVE IN PIPELINE', val: candActive, color: 'F59E0B', x: 3.5, y: 1.5 },
+        { title: 'SUCCESSFULLY HIRED', val: candHired, color: '10B981', x: 0.6, y: 3.2 },
+        { title: 'REJECTED / ARCHIVED', val: candRejected, color: 'EF4444', x: 3.5, y: 3.2 }
+    ];
+
+    kpis.forEach(k => {
+        slide7.addShape(pptx.ShapeType.rect, {
+            x: k.x, y: k.y, w: 2.7, h: 1.4,
+            fill: { color: '111827' },
+            line: { color: '2A3547', width: 1 }
+        });
+        slide7.addShape(pptx.ShapeType.rect, {
+            x: k.x, y: k.y, w: 2.7, h: 0.05,
+            fill: { color: k.color }
+        });
+        slide7.addText(k.title, {
+            x: k.x + 0.15, y: k.y + 0.2, w: 2.4, h: 0.3,
+            fontSize: 9, bold: true, color: '94A3B8', fontFace: 'Arial'
+        });
+        slide7.addText(k.val.toString(), {
+            x: k.x + 0.15, y: k.y + 0.5, w: 2.4, h: 0.7,
+            fontSize: 32, bold: true, color: 'FFFFFF', fontFace: 'Arial'
+        });
+    });
+
+    slide7.addText('SOURCING CHANNEL DISTRIBUTION', {
+        x: 6.8, y: 1.4, w: 5.9, h: 0.3,
+        fontSize: 12, bold: true, color: 'F37021', fontFace: 'Arial'
+    });
+
+    const sortedSources = Object.keys(candSourceCounts)
+        .map(src => ({ source: src, count: candSourceCounts[src] }))
+        .sort((a, b) => b.count - a.count);
+
+    const tableRows = [];
+    tableRows.push([
+        { text: 'Sourcing Channel', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' }, fontFace: 'Arial', fontSize: 10 } },
+        { text: 'Candidates', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' }, fontFace: 'Arial', fontSize: 10, align: 'center' } },
+        { text: 'Share %', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' }, fontFace: 'Arial', fontSize: 10, align: 'center' } }
+    ]);
+
+    if (sortedSources.length === 0) {
+        tableRows.push([
+            { text: 'No candidate data available', options: { color: '94A3B8', fontFace: 'Arial', fontSize: 9 } },
+            { text: '0', options: { color: '94A3B8', fontFace: 'Arial', fontSize: 9, align: 'center' } },
+            { text: '0%', options: { color: '94A3B8', fontFace: 'Arial', fontSize: 9, align: 'center' } }
+        ]);
+    } else {
+        let topSources = sortedSources.slice(0, 4);
+        let otherCount = sortedSources.slice(4).reduce((sum, item) => sum + item.count, 0);
+        if (otherCount > 0) {
+            topSources.push({ source: 'Other Sourcing', count: otherCount });
+        }
+        topSources.forEach(item => {
+            const pct = candTotal > 0 ? Math.round((item.count / candTotal) * 100) : 0;
+            tableRows.push([
+                { text: item.source, options: { color: 'E2E8F0', fontFace: 'Arial', fontSize: 9.5, fill: { color: '111827' } } },
+                { text: item.count.toString(), options: { color: '10B981', fontFace: 'Arial', fontSize: 9.5, align: 'center', fill: { color: '111827' } } },
+                { text: `${pct}%`, options: { color: 'FFFFFF', fontFace: 'Arial', fontSize: 9.5, align: 'center', fill: { color: '111827' } } }
+            ]);
+        });
+    }
+
+    slide7.addTable(tableRows, {
+        x: 6.8, y: 1.8, w: 5.9, h: 1.8,
+        colW: [3.3, 1.3, 1.3],
+        border: { type: 'solid', color: '2A3547', width: 1 }
+    });
+
+    const candInsightY = 5.25;
+    slide7.addShape(pptx.ShapeType.rect, {
+        x: 0.6, y: candInsightY, w: 12.1, h: 1.5,
+        fill: { color: '111827' },
+        line: { color: '2A3547', width: 1 }
+    });
+    
+    slide7.addText('🎯 Sourcing Channel ROI & Funnel Insights', {
+        x: 0.8, y: candInsightY + 0.15, w: 11.7, h: 0.3,
+        fontSize: 11, bold: true, color: 'ED1924', fontFace: 'Arial'
+    });
+
+    const activePct = candTotal > 0 ? Math.round((candActive / candTotal) * 100) : 0;
+    const hiredPct = candTotal > 0 ? Math.round((candHired / candTotal) * 100) : 0;
+    const topSourceStr = sortedSources.length > 0 ? `${sortedSources[0].source} (${Math.round((sortedSources[0].count / candTotal) * 100)}%)` : 'N/A';
+    
+    const candInsightText = `• Total candidate applications logged in database: ${candTotal} across all current hiring tickets.
+• Active pipeline represents ${candActive} candidates (${activePct}% of total), which are currently being interviewed or evaluated.
+• Candidate hire conversion stands at ${hiredPct}% overall, indicating the share of applicants successfully onboarded.
+• Top sourcing channel by volume is ${topSourceStr}. Action: Double down recruitment spending on high-performing channels to maximize sourcing efficiency.`;
+    
+    slide7.addText(candInsightText, {
+        x: 0.8, y: candInsightY + 0.45, w: 11.7, h: 0.9,
         fontSize: 9.5, color: 'E2E8F0', fontFace: 'Arial', lineSpacing: 14
     });
 

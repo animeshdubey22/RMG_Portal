@@ -1512,3 +1512,252 @@ body.light-theme .ticket-card:hover .tc-remarks-box {
     color: var(--text);
     font-style: italic;
 }
+
+/* ===== CANDIDATE MANAGEMENT SPLIT LAYOUT ===== */
+.hiring-split-layout {
+    display: flex;
+    gap: 20px;
+    margin: 20px 40px;
+    max-width: 1360px;
+    align-items: flex-start;
+    position: relative;
+}
+.hiring-split-layout .table-wrapper {
+    flex: 1;
+    width: 100%;
+    margin: 0;
+    transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    min-width: 0; /* Prevents flex items from overflowing */
+}
+.hiring-split-layout .candidate-panel {
+    width: 440px;
+    flex-shrink: 0;
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    max-height: 750px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    z-index: 5;
+}
+body.light-theme .candidate-panel {
+    background: rgba(255, 255, 255, 0.92);
+}
+.hiring-split-layout .candidate-panel.hidden {
+    display: none !important;
+}
+
+/* Row selection styles */
+#hiring-table tbody tr {
+    cursor: pointer;
+    transition: var(--transition);
+}
+#hiring-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02) !important;
+}
+body.light-theme #hiring-table tbody tr:hover {
+    background: rgba(15, 23, 42, 0.02) !important;
+}
+#hiring-table tbody tr.selected-row {
+    background: rgba(237, 25, 36, 0.06) !important;
+}
+body.light-theme #hiring-table tbody tr.selected-row {
+    background: rgba(237, 25, 36, 0.05) !important;
+}
+#hiring-table tbody tr.selected-row td {
+    border-top: 1px solid rgba(237, 25, 36, 0.25) !important;
+    border-bottom: 1px solid rgba(237, 25, 36, 0.25) !important;
+    color: var(--text) !important;
+}
+#hiring-table tbody tr.selected-row td:first-child {
+    border-left: 3px solid var(--accent) !important;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+/* Placeholder state */
+.candidate-placeholder {
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+}
+
+/* Candidate lists & cards */
+.candidate-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+.candidate-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+body.light-theme .candidate-card {
+    background: var(--surface);
+}
+body.light-theme .candidate-card:hover {
+    border-color: rgba(15, 23, 42, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+.candidate-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.candidate-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.candidate-info {
+    flex: 1;
+    min-width: 0;
+}
+.candidate-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+.candidate-meta-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.candidate-card-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0.7;
+    transition: var(--transition);
+}
+.candidate-card:hover .candidate-card-actions {
+    opacity: 1;
+}
+.cand-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    color: var(--text-dim);
+}
+.cand-action-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+}
+body.light-theme .cand-action-btn:hover {
+    background: rgba(0,0,0,0.05);
+}
+.cand-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--red);
+}
+
+/* Drawer details styling */
+.candidate-details-drawer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.76rem;
+    color: var(--text-dim);
+}
+.cand-detail-item {
+    display: flex;
+    justify-content: space-between;
+}
+.cand-detail-item strong {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.cand-detail-item span {
+    color: var(--text);
+    font-weight: 600;
+    max-width: 70%;
+    word-break: break-all;
+}
+
+/* Candidate status badges */
+.cand-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.cand-badge.interviewing { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
+.cand-badge.offered      { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25); }
+.cand-badge.accepted     { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.25); }
+.cand-badge.hired        { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.25); }
+.cand-badge.rejected     { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
+
+body.light-theme .cand-badge.interviewing { background: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
+body.light-theme .cand-badge.offered      { background: rgba(245, 158, 11, 0.1); color: #b45309; }
+body.light-theme .cand-badge.accepted     { background: rgba(139, 92, 246, 0.1); color: #6d28d9; }
+body.light-theme .cand-badge.hired        { background: rgba(16, 185, 129, 0.1); color: #047857; }
+body.light-theme .cand-badge.rejected     { background: rgba(239, 68, 68, 0.1); color: #b91c1c; }
+
+/* Requester Card mini funnel styling */
+.tc-candidate-funnel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 6px 10px;
+    justify-content: space-between;
+}
+body.light-theme .tc-candidate-funnel {
+    background: rgba(15, 23, 42, 0.02);
+}
+.tc-candidate-funnel .funnel-item {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+.tc-candidate-funnel .funnel-item b {
+    color: var(--text);
+}
+
+@media (max-width: 1200px) {
+    .hiring-split-layout {
+        flex-direction: column;
+    }
+    .hiring-split-layout .candidate-panel {
+        width: 100%;
+        max-height: none;
+    }
+}
+
