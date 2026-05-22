@@ -268,6 +268,12 @@ function updateUIForUser() {
             adminPanelContent.style.gridTemplateColumns = '1fr 1fr 1.2fr';
         }
     }
+
+    // Hide/show clear-database button based on user role (Admin only)
+    const clearDbBtn = document.getElementById('btn-clear-database');
+    if (clearDbBtn) {
+        clearDbBtn.style.display = isHr ? '' : 'none';
+    }
 }
 
 function navigate(page) {
@@ -811,12 +817,47 @@ function openUpdateModal(ticketId) {
         }
     }
 
+    // Show/hide delete button based on user role (Admin only)
+    const deleteBtn = document.getElementById('btn-delete-ticket');
+    if (deleteBtn) {
+        const currentUser = getActiveUser();
+        if (currentUser && currentUser.role === 'HR Team / Admin') {
+            deleteBtn.style.display = 'inline-flex';
+            deleteBtn.style.alignItems = 'center';
+            deleteBtn.style.gap = '4px';
+        } else {
+            deleteBtn.style.display = 'none';
+        }
+    }
+
     document.getElementById('update-modal').classList.remove('hidden');
 }
 
 function closeModal() {
     document.getElementById('update-modal').classList.add('hidden');
     currentEditId = null;
+}
+
+function deleteTicket() {
+    if (!currentEditId) return;
+    const currentUser = getActiveUser();
+    if (!currentUser || currentUser.role !== 'HR Team / Admin') {
+        showToast('Access Denied', 'Only HR Team / Admin users can delete tickets.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete ticket ${currentEditId}? This action cannot be undone.`)) {
+        let tickets = loadTickets();
+        const deletedId = currentEditId;
+        tickets = tickets.filter(t => t.ticketId !== deletedId);
+        saveTickets(tickets);
+        
+        closeModal();
+        renderHiringTickets();
+        updateDashboardStats();
+        
+        showToast('Ticket Deleted', `Ticket ${deletedId} has been successfully deleted.`);
+    }
 }
 
 function saveUpdate(e) {
@@ -1923,7 +1964,28 @@ function loadPremiumDemoData() {
     updateDashboardStats();
     populateDeptFilter();
     
-    showToast("Demo Data Loaded", "Successfully populated local database with 12 premium recruitment requests.");
+}
+
+// ───── Clear Database Tickets ─────
+function clearDatabaseTickets() {
+    const currentUser = getActiveUser();
+    if (!currentUser || currentUser.role !== 'HR Team / Admin') {
+        showToast('Access Denied', 'Only HR Team / Admin users can clear the database.');
+        return;
+    }
+    
+    if (!confirm("Are you sure you want to clear the entire tickets database? This will delete all cases and cannot be undone. We recommend exporting a JSON backup first!")) {
+        return;
+    }
+    
+    saveTickets([]);
+    
+    // Refresh all views
+    renderHiringTickets();
+    updateDashboardStats();
+    populateDeptFilter();
+    
+    showToast("Database Cleared", "All tickets have been successfully removed.");
 }
 
 // ───── Database Backup & Restore (JSON) ─────
