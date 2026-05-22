@@ -4891,9 +4891,9 @@ function downloadPPTReport() {
     }
 
     slide7.addTable(tableRows, {
-        x: 6.8, y: 1.8, w: 5.9, h: 1.8,
-        colW: [3.3, 1.3, 1.3],
-        border: { type: 'solid', color: '2A3547', width: 1 }
+        x: 6.8, y: 1.8, w: 5.9,
+        colWidths: [3.3, 1.3, 1.3],
+        border: { pt: '1', color: '2A3547' }
     });
 
     const candInsightY = 5.25;
