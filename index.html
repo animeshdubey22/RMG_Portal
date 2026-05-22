@@ -377,7 +377,7 @@
                 </div>
 
                 <!-- Column 3: User Accounts & Security -->
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div id="admin-security-section" style="display: flex; flex-direction: column; gap: 12px;">
                     <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; letter-spacing: 0.4px;">👤 User Accounts & Security</h3>
                     
                     <!-- Passcode Config -->
@@ -406,6 +406,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Hiring Dashboard View Switcher Tabs -->
+        <div class="ana-tabs" id="hiring-scope-tabs-container" style="margin: 20px 40px 0; max-width: 1360px; padding: 0;">
+            <button type="button" class="ana-tab-btn active" id="btn-hiring-all" onclick="changeHiringScope('all')">📂 All Tickets</button>
+            <button type="button" class="ana-tab-btn" id="btn-hiring-my" onclick="changeHiringScope('my')">👤 Assigned to Me</button>
+            <button type="button" class="ana-tab-btn" id="btn-hiring-new" onclick="changeHiringScope('new')">🟢 Unallocated / New</button>
         </div>
 
         <!-- Filters -->
@@ -437,6 +444,7 @@
                             <th>Department</th>
                             <th>Project</th>
                             <th>Requested By</th>
+                            <th>Recruiter</th>
                             <th>Required HC</th>
                             <th>Hired</th>
                             <th>Pending</th>
@@ -568,6 +576,10 @@
                     <option value="">All Projects</option>
                 </select>
 
+                <select id="ana-filter-recruiter" onchange="refreshAnalytics()" style="min-width: 180px;">
+                    <option value="">All Recruiters</option>
+                </select>
+
                 <div style="flex: 1;"></div>
 
                 <!-- Download PPT slides button -->
@@ -695,6 +707,11 @@
                 <!-- Project Selector -->
                 <select id="compare-filter-project" onchange="refreshComparison()" style="min-width: 165px;">
                     <option value="">All Projects</option>
+                </select>
+
+                <!-- Recruiter Selector -->
+                <select id="compare-filter-recruiter" onchange="refreshComparison()" style="min-width: 165px;">
+                    <option value="">All Recruiters</option>
                 </select>
             </div>
 
@@ -850,6 +867,7 @@
                         <label for="signup-role">Portal Role <span class="req">*</span></label>
                         <select id="signup-role" required onchange="toggleRegisterRole(this.value)">
                             <option value="Requester">Requester</option>
+                            <option value="Recruiter">Recruiter</option>
                             <option value="HR Team / Admin">HR Team / Admin</option>
                         </select>
                     </div>
@@ -930,6 +948,12 @@
                     <div class="form-group">
                         <label for="upd-hired">Hired Count</label>
                         <input type="number" id="upd-hired" min="0" value="0">
+                    </div>
+                    <div class="form-group" id="upd-recruiter-group">
+                        <label for="upd-recruiter">Assigned Recruiter</label>
+                        <select id="upd-recruiter">
+                            <!-- Populated dynamically -->
+                        </select>
                     </div>
                     <div class="form-group" style="position: relative;">
                         <label for="upd-channel" style="display: flex; justify-content: space-between; align-items: center;">

@@ -77,7 +77,20 @@ function addCustomSourcingChannel() {
 
 // ───── Data Layer ─────
 function loadTickets() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    try {
+        const list = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        let changed = false;
+        list.forEach(t => {
+            if (!t.assignedRecruiter) {
+                t.assignedRecruiter = 'Unassigned';
+                changed = true;
+            }
+        });
+        if (changed) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        }
+        return list;
+    }
     catch { return []; }
 }
 
@@ -170,6 +183,12 @@ function initDefaultUsers() {
             role: 'HR Team / Admin'
         },
         {
+            email: 'recruiter@intelegencia.com',
+            password: 'recruiter',
+            name: 'Jane Recruiter',
+            role: 'Recruiter'
+        },
+        {
             email: 'requester@intelegencia.com',
             password: 'requester',
             name: 'John Requester',
@@ -216,23 +235,38 @@ function updateUIForUser() {
 
     // Update Navigation Links Visibility
     const isHr = user.role === 'HR Team / Admin';
+    const isRecruiter = user.role === 'Recruiter';
+    const isHrOrRecruiter = isHr || isRecruiter;
     
     const hiringNavLink = document.querySelector('.nav-link[data-page="hiring"]');
     const analyticsNavLink = document.querySelector('.nav-link[data-page="analytics"]');
     
-    if (hiringNavLink) hiringNavLink.style.display = isHr ? '' : 'none';
-    if (analyticsNavLink) analyticsNavLink.style.display = isHr ? '' : 'none';
+    if (hiringNavLink) hiringNavLink.style.display = isHrOrRecruiter ? '' : 'none';
+    if (analyticsNavLink) analyticsNavLink.style.display = isHrOrRecruiter ? '' : 'none';
 
     // Update Home page quick access cards
     const hiringQaCard = document.querySelector('.qa-card[onclick*="navigate(\'hiring\')"]');
     if (hiringQaCard) {
-        hiringQaCard.style.display = isHr ? '' : 'none';
+        hiringQaCard.style.display = isHrOrRecruiter ? '' : 'none';
     }
 
     // Toggle main page hero action button "Open Dashboard"
     const heroDashboardBtn = document.querySelector('.hero-actions .btn-outline[onclick*="navigate(\'hiring\')"]');
     if (heroDashboardBtn) {
-        heroDashboardBtn.style.display = isHr ? '' : 'none';
+        heroDashboardBtn.style.display = isHrOrRecruiter ? '' : 'none';
+    }
+
+    // Hide/show admin-security-section and adjust grid for Recruiter/Admin
+    const adminSecuritySection = document.getElementById('admin-security-section');
+    const adminPanelContent = document.getElementById('admin-panel-content');
+    if (adminSecuritySection && adminPanelContent) {
+        if (isRecruiter) {
+            adminSecuritySection.style.display = 'none';
+            adminPanelContent.style.gridTemplateColumns = '1fr 1fr';
+        } else if (isHr) {
+            adminSecuritySection.style.display = 'flex';
+            adminPanelContent.style.gridTemplateColumns = '1fr 1fr 1.2fr';
+        }
     }
 }
 
@@ -248,7 +282,7 @@ function navigate(page) {
             page = 'home';
         }
         // Role Gate: Requester cannot access 'hiring' or 'analytics'
-        if ((page === 'hiring' || page === 'analytics') && user.role !== 'HR Team / Admin') {
+        if ((page === 'hiring' || page === 'analytics') && user.role !== 'HR Team / Admin' && user.role !== 'Recruiter') {
             page = 'home';
         }
     }
@@ -470,6 +504,7 @@ function submitRequest(e) {
         hiredCount:   0,
         sourcingChannel: 'Other',
         recruitmentCost: 0,
+        assignedRecruiter: 'Unassigned',
         remarks:      '',
         history: [
             { date: new Date().toISOString(), action: 'Ticket Created', by: 'Requester' }
@@ -559,6 +594,41 @@ function renderRequesterTickets() {
 }
 
 // ───── Hiring Dashboard: Table ─────
+let currentHiringScope = 'all';
+
+function changeHiringScope(scope) {
+    currentHiringScope = scope;
+    document.querySelectorAll('#hiring-scope-tabs-container .ana-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById(`btn-hiring-${scope}`);
+    if (activeBtn) activeBtn.classList.add('active');
+    renderHiringTickets();
+}
+
+function claimTicket(ticketId) {
+    const user = getActiveUser();
+    if (!user || user.role !== 'Recruiter') return;
+    
+    const tickets = loadTickets();
+    const idx = tickets.findIndex(x => x.ticketId === ticketId);
+    if (idx === -1) return;
+    
+    const t = tickets[idx];
+    t.assignedRecruiter = user.name;
+    t.updatedAt = new Date().toISOString();
+    t.history = t.history || [];
+    t.history.push({
+        date: new Date().toISOString(),
+        action: 'Ticket Claimed',
+        by: user.name
+    });
+    
+    saveTickets(tickets);
+    showToast('Ticket Claimed', `You have claimed ticket ${ticketId}`);
+    renderHiringTickets();
+}
+
 function renderHiringTickets() {
     const tbody = document.getElementById('hiring-table-body');
     const emptyEl = document.getElementById('hiring-empty');
@@ -569,6 +639,17 @@ function renderHiringTickets() {
     const deptF = document.getElementById('filter-dept')?.value || '';
 
     let tickets = loadTickets();
+    
+    // Scope Filter
+    const user = getActiveUser();
+    if (user) {
+        if (currentHiringScope === 'my') {
+            tickets = tickets.filter(t => t.assignedRecruiter === user.name);
+        } else if (currentHiringScope === 'new') {
+            tickets = tickets.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+        }
+    }
+
     if (search) tickets = tickets.filter(t =>
         t.ticketId.toLowerCase().includes(search) ||
         t.department.toLowerCase().includes(search) ||
@@ -591,6 +672,19 @@ function renderHiringTickets() {
     tbody.innerHTML = tickets.map(t => {
         const pending = Math.max(0, t.requiredHC - t.hiredCount);
         const pct = Math.min(100, Math.round((t.hiredCount / t.requiredHC) * 100));
+        
+        let recruiterCell = '';
+        const ticketRecruiter = t.assignedRecruiter || 'Unassigned';
+        if (ticketRecruiter && ticketRecruiter !== 'Unassigned') {
+            recruiterCell = `<span style="font-weight:600;color:var(--text-dim)">${ticketRecruiter}</span>`;
+        } else {
+            if (user && user.role === 'Recruiter') {
+                recruiterCell = `<button class="btn-table" onclick="claimTicket('${t.ticketId}')" style="background:var(--blue);border-color:var(--blue);font-size:0.72rem;padding:4px 8px;margin:0;">Claim</button>`;
+            } else {
+                recruiterCell = `<span style="color:var(--text-muted);font-style:italic">Unassigned</span>`;
+            }
+        }
+
         return `
         <tr>
             <td><strong style="color:var(--accent)">${t.ticketId}</strong></td>
@@ -598,6 +692,7 @@ function renderHiringTickets() {
             <td>${t.department}</td>
             <td>${t.project}</td>
             <td>${t.requestedBy}</td>
+            <td>${recruiterCell}</td>
             <td style="text-align:center">${t.requiredHC}</td>
             <td>
                 <span style="color:var(--green);font-weight:700">${t.hiredCount}</span>
@@ -687,6 +782,35 @@ function openUpdateModal(ticketId) {
     if (customInput) customInput.value = '';
     document.getElementById('upd-cost').value = t.recruitmentCost || 0;
     document.getElementById('upd-remarks').value = t.remarks || '';
+
+    // Populate Recruiter select dropdown
+    const recSel = document.getElementById('upd-recruiter');
+    if (recSel) {
+        const currentUser = getActiveUser();
+        const ticketRecruiter = t.assignedRecruiter || 'Unassigned';
+        
+        if (currentUser && currentUser.role === 'Recruiter') {
+            const options = new Set(['Unassigned', currentUser.name]);
+            if (ticketRecruiter && ticketRecruiter !== 'Unassigned') {
+                options.add(ticketRecruiter);
+            }
+            recSel.innerHTML = Array.from(options).map(name => 
+                `<option value="${name === 'Unassigned' ? '' : name}" ${ticketRecruiter === name ? 'selected' : ''}>${name}</option>`
+            ).join('');
+        } else {
+            const allUsers = loadUsers();
+            const recruiters = [...new Set(allUsers.filter(u => u.role === 'Recruiter').map(u => u.name).filter(Boolean))].sort();
+            let optionsHtml = `<option value="">Unassigned</option>`;
+            if (ticketRecruiter && ticketRecruiter !== 'Unassigned' && !recruiters.includes(ticketRecruiter)) {
+                optionsHtml += `<option value="${ticketRecruiter}" selected>${ticketRecruiter}</option>`;
+            }
+            optionsHtml += recruiters.map(name => 
+                `<option value="${name}" ${ticketRecruiter === name ? 'selected' : ''}>${name}</option>`
+            ).join('');
+            recSel.innerHTML = optionsHtml;
+        }
+    }
+
     document.getElementById('update-modal').classList.remove('hidden');
 }
 
@@ -716,6 +840,7 @@ function saveUpdate(e) {
         newChannel = customVal;
     }
     const newCost = parseInt(document.getElementById('upd-cost').value, 10) || 0;
+    const newRecruiter = document.getElementById('upd-recruiter')?.value || 'Unassigned';
 
     const changes = [];
     if (t.stage !== newStage) changes.push(`Stage → ${newStage}`);
@@ -723,6 +848,7 @@ function saveUpdate(e) {
     if (t.hiredCount !== newHired) changes.push(`Hired Count → ${newHired}`);
     if ((t.sourcingChannel || 'Other') !== newChannel) changes.push(`Sourcing Channel → ${newChannel}`);
     if ((t.recruitmentCost || 0) !== newCost) changes.push(`Spend → ₱${newCost.toLocaleString('en-PH')}`);
+    if ((t.assignedRecruiter || 'Unassigned') !== newRecruiter) changes.push(`Recruiter → ${newRecruiter || 'Unassigned'}`);
     if (newRemarks && t.remarks !== newRemarks) changes.push('Remarks updated');
 
     if (changes.length) {
@@ -730,7 +856,7 @@ function saveUpdate(e) {
         t.history.push({
             date: new Date().toISOString(),
             action: changes.join('; '),
-            by: 'Hiring Team'
+            by: getActiveUser()?.name || 'Hiring Team'
         });
     }
 
@@ -739,18 +865,17 @@ function saveUpdate(e) {
     t.hiredCount = newHired;
     t.sourcingChannel = newChannel;
     t.recruitmentCost = newCost;
+    t.assignedRecruiter = newRecruiter || 'Unassigned';
     t.remarks = newRemarks;
     t.updatedAt = new Date().toISOString();
+    
     tickets[idx] = t;
     saveTickets(tickets);
-
-    const savedId = currentEditId;
     closeModal();
     renderHiringTickets();
-    showToast('Ticket Updated', `${savedId} saved successfully`);
+    showToast('Update Saved', `Ticket ${t.ticketId} has been updated.`);
 }
 
-// ───── Detail Modal ─────
 function showTicketDetail(ticketId) {
     const t = loadTickets().find(x => x.ticketId === ticketId);
     if (!t) return;
@@ -761,12 +886,13 @@ function showTicketDetail(ticketId) {
     const rows = [
         ['Ticket ID', `<strong style="color:var(--accent)">${t.ticketId}</strong>`],
         ['Status', `<span class="badge ${badgeClass(t.status)}">${t.status}</span>`],
-        ['Stage', t.stage || '—'],
+        ['Stage', t.stage || '-'],
         ['Department', t.department],
         ['Project', t.project],
         ['Requested By', t.requestedBy],
+        ['Assigned Recruiter', t.assignedRecruiter || 'Unassigned'],
         ['Hiring Reason', t.hiringReason],
-        ['Detailed Reason', t.reasonDetail || '—'],
+        ['Detailed Reason', t.reasonDetail || '-'],
         ['Billable', t.billable],
         ['Site / Location', t.site],
         ['Required HC', t.requiredHC],
@@ -779,8 +905,8 @@ function showTicketDetail(ticketId) {
         ['Sourcing Channel', t.sourcingChannel || 'Other'],
         ['Recruitment Spend', `₱${(t.recruitmentCost || 0).toLocaleString('en-PH')}`],
         ['Created', fmtDateTime(t.createdAt)],
-        ['Last Updated', t.updatedAt ? fmtDateTime(t.updatedAt) : '—'],
-        ['Remarks', t.remarks || '—'],
+        ['Last Updated', t.updatedAt ? fmtDateTime(t.updatedAt) : '-'],
+        ['Remarks', t.remarks || '-'],
     ];
 
     let html = rows.map(([l, v]) =>
@@ -800,7 +926,8 @@ function showTicketDetail(ticketId) {
         html += '</div>';
     }
 
-    if (getActiveUserRole() === 'HR Team / Admin') {
+    const userRole = getActiveUserRole();
+    if (userRole === 'HR Team / Admin' || userRole === 'Recruiter') {
         html += `<div style="margin-top: 18px; padding: 14px; border: 1px dashed rgba(108,99,255,0.3); border-radius: var(--radius-sm); background: rgba(108,99,255,0.03);">
             <div style="color: var(--accent); margin-bottom: 8px; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -860,6 +987,7 @@ function lookupTicket() {
                 <div class="tr-item"><span class="tr-label">Hiring Reason</span><span class="tr-value">${t.hiringReason}</span></div>
                 <div class="tr-item"><span class="tr-label">Billable</span><span class="tr-value">${t.billable}</span></div>
                 <div class="tr-item"><span class="tr-label">Stage</span><span class="tr-value">${t.stage || '—'}</span></div>
+                <div class="tr-item"><span class="tr-label">Assigned Recruiter</span><span class="tr-value">${t.assignedRecruiter || 'Unassigned'}</span></div>
                 <div class="tr-item"><span class="tr-label">Expected DOJ</span><span class="tr-value">${fmtDate(t.expectedDOJ)}</span></div>
                 <div class="tr-item"><span class="tr-label">Sourcing Channel</span><span class="tr-value">${t.sourcingChannel || 'Other'}</span></div>
                 <div class="tr-item"><span class="tr-label">Recruitment Spend</span><span class="tr-value">₱${(t.recruitmentCost || 0).toLocaleString('en-PH')}</span></div>
@@ -895,6 +1023,12 @@ function lookupTicket() {
         </div>`;
 }
 
+function clearTracker() {
+    const input = document.getElementById('tracker-ticket-id');
+    if (input) input.value = '';
+    document.getElementById('tracker-result')?.classList.add('hidden');
+}
+
 // ───── Excel Export ─────
 function exportToExcel() {
     const tickets = loadTickets();
@@ -913,6 +1047,7 @@ function exportToExcel() {
         'Department':      t.department,
         'Project':         t.project,
         'Requested By':    t.requestedBy,
+        'Assigned Recruiter': t.assignedRecruiter || 'Unassigned',
         'Hiring Reason':   t.hiringReason,
         'Billable':        t.billable,
         'Detailed Reason': t.reasonDetail || '',
@@ -1047,11 +1182,19 @@ function toggleAuthTab(tab) {
 function toggleRegisterRole(role) {
     const passcodeGroup = document.getElementById('signup-passcode-group');
     const passcodeField = document.getElementById('signup-passcode');
+    const passcodeHelp = passcodeGroup ? passcodeGroup.querySelector('.passcode-help') : null;
+    const passcodeLabel = passcodeGroup ? passcodeGroup.querySelector('.passcode-label') : null;
     if (!passcodeGroup) return;
     
-    if (role === 'HR Team / Admin') {
+    if (role === 'HR Team / Admin' || role === 'Recruiter') {
         passcodeGroup.classList.remove('hidden');
         if (passcodeField) passcodeField.required = true;
+        if (passcodeHelp) {
+            passcodeHelp.textContent = `Security passcode is required to register as ${role === 'Recruiter' ? 'a Recruiter' : 'HR/Admin'}.`;
+        }
+        if (passcodeLabel) {
+            passcodeLabel.innerHTML = `${role === 'Recruiter' ? 'Recruiter' : 'Admin'} Security Passcode <span class="req">*</span>`;
+        }
     } else {
         passcodeGroup.classList.add('hidden');
         if (passcodeField) {
@@ -1125,7 +1268,7 @@ function submitSignup(e) {
     const box = document.querySelector('.auth-box');
     
     // Recruiter validation check
-    if (role === 'HR Team / Admin') {
+    if (role === 'HR Team / Admin' || role === 'Recruiter') {
         const currentPasscode = localStorage.getItem('rmg_recruiter_passcode') || 'RMG123';
         if (passcode !== currentPasscode) {
             if (box) {
@@ -1134,7 +1277,7 @@ function submitSignup(e) {
             }
             if (errorEl) {
                 errorEl.classList.remove('hidden');
-                errorEl.textContent = '❌ Invalid recruiter security passcode.';
+                errorEl.textContent = '❌ Invalid security passcode.';
             }
             return;
         }
@@ -1881,6 +2024,7 @@ function importExcelData(e) {
                 saveSourcingChannel(sourcingChannel);
                 const recruitmentCost = parseInt(row['Recruitment Spend (PHP)'] || row['Recruitment Cost (PHP)'] || row['recruitmentCost'] || 0, 10);
                 const remarks = row['Remarks'] || row['remarks'] || '';
+                const assignedRecruiter = row['Assigned Recruiter'] || row['assignedRecruiter'] || row['Recruiter'] || 'Unassigned';
                 const createdAt = row['Created Date'] || row['createdAt'] || new Date().toISOString();
                 const updatedAt = row['Last Updated'] || row['updatedAt'] || new Date().toISOString();
                 
@@ -1902,6 +2046,7 @@ function importExcelData(e) {
                     hiredCount,
                     sourcingChannel,
                     recruitmentCost,
+                    assignedRecruiter,
                     remarks,
                     history: [
                         { date: new Date().toISOString(), action: 'Ticket Imported/Merged via Excel', by: 'Recruiter' }
@@ -2031,6 +2176,8 @@ let trendPeriod = 'daily';
 
 function populateAnalyticsFilters() {
     const tickets = loadTickets();
+    const user = getActiveUser();
+    const isRecruiter = user && user.role === 'Recruiter';
     
     // Departments (Standard)
     const deptSel = document.getElementById('ana-filter-dept');
@@ -2059,6 +2206,26 @@ function populateAnalyticsFilters() {
             projects.map(p => `<option${p === cur ? ' selected' : ''}>${p}</option>`).join('');
     }
 
+    // Recruiter Filter (Standard Analytics)
+    const recSel = document.getElementById('ana-filter-recruiter');
+    if (recSel) {
+        if (isRecruiter) {
+            recSel.innerHTML = `<option value="${user.name}">${user.name}</option>`;
+            recSel.value = user.name;
+            recSel.disabled = true;
+        } else {
+            recSel.disabled = false;
+            const users = loadUsers();
+            const regRecruiters = users.filter(u => u.role === 'Recruiter').map(u => u.name).filter(Boolean);
+            const ticketRecruiters = tickets.map(t => t.assignedRecruiter).filter(r => r && r !== 'Unassigned');
+            const recruiters = [...new Set([...regRecruiters, ...ticketRecruiters])].sort();
+            const cur = recSel.value;
+            recSel.innerHTML = '<option value="">All Recruiters</option>' +
+                '<option value="Unassigned">Unassigned</option>' +
+                recruiters.map(r => `<option${r === cur ? ' selected' : ''} value="${r}">${r}</option>`).join('');
+        }
+    }
+
     // Departments (Comparison)
     const compDeptSel = document.getElementById('compare-filter-dept');
     if (compDeptSel) {
@@ -2075,6 +2242,26 @@ function populateAnalyticsFilters() {
         const cur = compProjSel.value;
         compProjSel.innerHTML = '<option value="">All Projects</option>' +
             projects.map(p => `<option${p === cur ? ' selected' : ''}>${p}</option>`).join('');
+    }
+
+    // Recruiter Filter (Comparison Analytics)
+    const compRecSel = document.getElementById('compare-filter-recruiter');
+    if (compRecSel) {
+        if (isRecruiter) {
+            compRecSel.innerHTML = `<option value="${user.name}">${user.name}</option>`;
+            compRecSel.value = user.name;
+            compRecSel.disabled = true;
+        } else {
+            compRecSel.disabled = false;
+            const users = loadUsers();
+            const regRecruiters = users.filter(u => u.role === 'Recruiter').map(u => u.name).filter(Boolean);
+            const ticketRecruiters = tickets.map(t => t.assignedRecruiter).filter(r => r && r !== 'Unassigned');
+            const recruiters = [...new Set([...regRecruiters, ...ticketRecruiters])].sort();
+            const cur = compRecSel.value;
+            compRecSel.innerHTML = '<option value="">All Recruiters</option>' +
+                '<option value="Unassigned">Unassigned</option>' +
+                recruiters.map(r => `<option${r === cur ? ' selected' : ''} value="${r}">${r}</option>`).join('');
+        }
     }
 
     // Dynamic Years Checklist (Comparison)
@@ -2128,11 +2315,19 @@ function refreshAnalytics() {
     const deptF = document.getElementById('ana-filter-dept')?.value || '';
     const reqF = document.getElementById('ana-filter-requester')?.value || '';
     const projF = document.getElementById('ana-filter-project')?.value || '';
+    const recF = document.getElementById('ana-filter-recruiter')?.value || '';
     
     let filtered = tickets;
     if (deptF) filtered = filtered.filter(t => t.department === deptF);
     if (reqF) filtered = filtered.filter(t => t.requestedBy === reqF);
     if (projF) filtered = filtered.filter(t => t.project === projF);
+    if (recF) {
+        if (recF === 'Unassigned') {
+            filtered = filtered.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+        } else {
+            filtered = filtered.filter(t => t.assignedRecruiter === recF);
+        }
+    }
     
     // KPIs
     const completedTickets = filtered.filter(t => t.status === 'Completed');
@@ -2289,11 +2484,19 @@ function refreshComparison() {
     const selectedMonth = document.getElementById('compare-filter-month')?.value || 'all';
     const deptF = document.getElementById('compare-filter-dept')?.value || '';
     const projF = document.getElementById('compare-filter-project')?.value || '';
+    const recF = document.getElementById('compare-filter-recruiter')?.value || '';
     
-    // 2. Filter tickets by Department and Project
+    // 2. Filter tickets by Department, Project, and Recruiter
     let filtered = tickets;
     if (deptF) filtered = filtered.filter(t => t.department === deptF);
     if (projF) filtered = filtered.filter(t => t.project === projF);
+    if (recF) {
+        if (recF === 'Unassigned') {
+            filtered = filtered.filter(t => !t.assignedRecruiter || t.assignedRecruiter === 'Unassigned');
+        } else {
+            filtered = filtered.filter(t => t.assignedRecruiter === recF);
+        }
+    }
     
     // 3. Populate Scorecards Grid
     const scorecardGrid = document.getElementById('compare-grid-scorecards');
